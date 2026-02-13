@@ -1,0 +1,88 @@
+# Claude Code project data (contains local session data)
+.claude/
+
+# Visual Studio / MSBuild
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# MSIX Packaging
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+*.appx
+*.appxbundle
+*.appxupload
+*.msix
+*.msixbundle
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio cache/options
+.vs/
+*.vsidx
+*.vssscc
+.vscode/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin
+$RECYCLE.BIN/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.stackdump

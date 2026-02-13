@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap3 mp rescap com desktop">
+
+  <Identity Name="LlmTokenWidget" Publisher="CN=TestCert" Version="1.0.6.0" />
+
+  <mp:PhoneIdentity PhoneProductId="9F910C81-08A4-461F-93A6-96809C70A95D" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+
+  <Properties>
+    <DisplayName>LLM Token Widget</DisplayName>
+    <PublisherDisplayName>TestPublisher</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22621.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements DisplayName="LLM Token Widget"
+                          Description="Displays LLM token usage and cooldown estimates"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Images\Square150x150Logo.png"
+                          Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- COM Registration -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="LlmTokenWidget.App\LlmTokenWidget.App.exe" DisplayName="LLM Token Widget Provider" Arguments="-Embedding">
+              <com:Class Id="9F910C81-08A4-461F-93A6-96809C70A95D" DisplayName="Widget Provider" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+
+        <!-- Widget Registration -->
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="LLM Token Widget v6" Id="WidgetProvider" PublicFolder="Public">
+            <uap3:Properties>
+              <WidgetProvider>
+                <ProviderIcons>
+                  <Icon Path="Images\StoreLogo.png" />
+                </ProviderIcons>
+                <Activation>
+                  <CreateInstance ClassId="9F910C81-08A4-461F-93A6-96809C70A95D" />
+                </Activation>
+                <Definitions>
+                  <Definition Id="Claude_Usage_Widget" DisplayName="Claude Code Usage v6" Description="Local token usage and cooldown estimate">
+                    <Capabilities>
+                      <Capability>
+                        <Size Name="small" />
+                      </Capability>
+                      <Capability>
+                        <Size Name="medium" />
+                      </Capability>
+                      <Capability>
+                        <Size Name="large" />
+                      </Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="Images\StoreLogo.png" />
+                      </Icons>
+                      <Screenshots>
+                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Claude Code Usage Widget" />
+                      </Screenshots>
+                    </ThemeResources>
+                  </Definition>
+                  <Definition Id="LLM_Summary_Widget" DisplayName="LLM Usage Summary" Description="Multi-provider usage aggregation">
+                    <Capabilities>
+                      <Capability>
+                        <Size Name="medium" />
+                      </Capability>
+                      <Capability>
+                        <Size Name="large" />
+                      </Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="Images\StoreLogo.png" />
+                      </Icons>
+                      <Screenshots>
+                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="LLM Usage Summary Widget" />
+                      </Screenshots>
+                    </ThemeResources>
+                  </Definition>
+                </Definitions>
+              </WidgetProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
