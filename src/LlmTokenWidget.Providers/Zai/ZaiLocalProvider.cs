@@ -9,6 +9,7 @@ namespace LlmTokenWidget.Providers.Zai;
 public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
 {
     private readonly MessageParser _parser;
+    private readonly ZaiQuotaClient _quotaClient;
     private FileSystemWatcher? _storageWatcher;
     private Timer? _debounceTimer;
     private bool _disposed;
@@ -22,6 +23,7 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
     public ZaiLocalProvider()
     {
         _parser = new MessageParser();
+        _quotaClient = new ZaiQuotaClient();
         StartWatching();
     }
 
@@ -37,7 +39,7 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
             exists ? null : $"Opencode storage not found. Install opencode CLI to track Z.ai usage."));
     }
 
-    public Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
+    public async Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
     {
         var usage = _parser.ParseAllSessions();
 
@@ -47,6 +49,8 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
             CacheCreationTokens: usage.TotalCacheWrite,
             CacheReadTokens: usage.TotalCacheRead);
 
+        var quota = await _quotaClient.FetchAsync(ct);
+
         var snapshot = new UsageSnapshot(
             TotalTokens: totalTokens,
             SessionCount: usage.SessionCount,
@@ -55,9 +59,9 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
             LatestMessage: usage.LatestMessage,
             FetchedAt: DateTimeOffset.UtcNow,
             LiveStatus: null,
-            OAuthUsage: null);
+            OAuthUsage: quota);
 
-        return Task.FromResult(snapshot);
+        return snapshot;
     }
 
     private void StartWatching()
@@ -104,5 +108,6 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
         _disposed = true;
         _storageWatcher?.Dispose();
         _debounceTimer?.Dispose();
+        _quotaClient.Dispose();
     }
 }

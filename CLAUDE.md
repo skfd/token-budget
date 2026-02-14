@@ -95,7 +95,7 @@ public interface ILlmProvider
 
 Current implementations:
 - **ClaudeCodeLocalProvider**: Reads `~/.claude/widget-data.json` for live session data + OAuth API for rate limits
-- **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage
+- **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage + Z.ai quota API for rate limits
 
 ### JSONL Parsing (Claude Code Local Data)
 
@@ -160,6 +160,62 @@ Current implementations:
 - Sum `tokens.input`, `tokens.output`, `tokens.reasoning`, `tokens.cache.read`, `tokens.cache.write`
 - Track session count and message count
 - Convert millisecond timestamps to DateTimeOffset
+
+### Z.ai Quota API
+
+**Endpoint:** `GET https://api.z.ai/api/monitor/usage/quota/limit`
+
+**Auth:** `Authorization: Bearer <API_KEY>` (from `~/.local/share/opencode/auth.json`, field `zai-coding-plan.key` or `zai.key`)
+
+**Response:**
+```json
+{
+  "code": 200,
+  "msg": "Operation successful",
+  "data": {
+    "limits": [
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 3,              // 3=hours
+        "number": 5,            // 5-hour rolling window
+        "percentage": 57,       // usage %
+        "nextResetTime": 1771066083865  // reset timestamp (ms)
+      },
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 6,              // 6=weeks
+        "number": 1,            // weekly quota
+        "percentage": 15,
+        "nextResetTime": 1771560256998
+      },
+      {
+        "type": "TIME_LIMIT",
+        "unit": 5,              // 5=months
+        "number": 1,
+        "usage": 1000,
+        "currentValue": 0,
+        "remaining": 1000,
+        "percentage": 0,
+        "nextResetTime": 1773374656988,
+        "usageDetails": [
+          { "modelCode": "search-prime", "usage": 0 },
+          { "modelCode": "web-reader", "usage": 0 },
+          { "modelCode": "zread", "usage": 0 }
+        ]
+      }
+    ],
+    "level": "pro"
+  },
+  "success": true
+}
+```
+
+**Unit enum (observed):** 3=hours, 5=months, 6=weeks
+
+**Mapping to widget:**
+- `TOKENS_LIMIT` with `unit=3` → 5-hour quota (maps to `OAuthUsageData.FiveHour`)
+- `TOKENS_LIMIT` with `unit=6` → Weekly quota (maps to `OAuthUsageData.SevenDay`)
+- `TIME_LIMIT` → Monthly web search/reader quota (not displayed yet)
 
 ### Cooldown Estimation
 
@@ -232,5 +288,6 @@ Polling only runs when widgets are active (Widgets board open).
 - `src/LlmTokenWidget.Providers/ClaudeCode/OAuthUsageClient.cs` — Fetches rate-limit data from Anthropic API
 - `src/LlmTokenWidget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
 - `src/LlmTokenWidget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
+- `src/LlmTokenWidget.Providers/Zai/ZaiQuotaClient.cs` — Fetches quota/rate-limit data from Z.ai API
 - `packaging/LlmTokenWidget.Package/Package.appxmanifest` — COM + widget registration
 - `rebuild-deploy.ps1` — Full rebuild and deploy script

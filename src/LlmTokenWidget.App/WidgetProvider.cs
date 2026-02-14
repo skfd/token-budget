@@ -295,13 +295,69 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     private string BuildZaiDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var total = usage.TotalTokens;
+        var oauth = usage.OAuthUsage;
+        var fiveHour = oauth?.FiveHour;
+        var weekly = oauth?.SevenDay;
 
-        var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
         var providerName = "Z.ai";
+
+        // 5-hour utilization
+        var utilization = fiveHour?.Utilization ?? 0;
+        var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
+        var percentValue = (int)Math.Round(utilization);
+        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
+        if (fiveHour == null) percentValueClamped = 0;
+
+        var statusEmoji = utilization switch
+        {
+            > 85 => "🔴",
+            > 60 => "🟡",
+            _ => fiveHour != null ? "🟢" : "⚪"
+        };
+
+        var resetText = "";
+        if (fiveHour?.ResetsAt != null)
+        {
+            var remaining = fiveHour.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining.TotalSeconds > 0)
+            {
+                resetText = remaining.TotalHours >= 1
+                    ? $"Resets in {(int)remaining.TotalHours} hr {remaining.Minutes} min"
+                    : $"Resets in {remaining.Minutes} min";
+            }
+        }
+
+        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
+
+        // Weekly quota
+        var weeklyPercent = weekly != null ? $"{weekly.Utilization:F0}%" : "—%";
+        var weeklyValue = weekly != null ? (int)Math.Round(weekly.Utilization) : 0;
+        var weeklyValueClamped = weekly != null ? Math.Max(1, Math.Min(100, weeklyValue)) : 0;
+        var weeklyRemaining = Math.Max(1, 100 - weeklyValueClamped);
+        var weeklyReset = "";
+        if (weekly?.ResetsAt != null)
+        {
+            var remaining = weekly.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining.TotalSeconds > 0)
+            {
+                weeklyReset = $"Resets {weekly.ResetsAt.Value.LocalDateTime:ddd MMM d, h:mm tt}";
+            }
+        }
 
         return $$"""
         {
             "providerName": "{{providerName}}",
+            "statusEmoji": "{{statusEmoji}}",
+            "percentText": "{{percentText}}",
+            "percentValue": {{percentValue}},
+            "percentValueClamped": {{percentValueClamped}},
+            "percentRemaining": {{percentRemaining}},
+            "resetTime": "{{resetText}}",
+            "weeklyPercent": "{{weeklyPercent}}",
+            "weeklyValue": {{weeklyValue}},
+            "weeklyValueClamped": {{weeklyValueClamped}},
+            "weeklyRemaining": {{weeklyRemaining}},
+            "weeklyReset": "{{weeklyReset}}",
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
@@ -873,20 +929,64 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         "body": [
             {
                 "type": "TextBlock",
-                "text": "${providerName}",
+                "text": "${providerName} quota",
                 "weight": "bolder",
                 "size": "small"
             },
             {
-                "type": "TextBlock",
-                "text": "${totalTokens} tokens",
-                "size": "medium",
-                "weight": "bolder",
-                "spacing": "none"
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
             },
             {
                 "type": "TextBlock",
-                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "text": "${resetTime}",
                 "size": "small",
                 "isSubtle": true,
                 "spacing": "none"
@@ -903,23 +1003,68 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         "body": [
             {
                 "type": "TextBlock",
-                "text": "${providerName}",
+                "text": "5 Hours Quota",
                 "weight": "bolder",
                 "size": "medium"
             },
             {
                 "type": "TextBlock",
-                "text": "${totalTokens} tokens",
-                "size": "large",
-                "weight": "bolder",
-                "spacing": "none"
-            },
-            {
-                "type": "TextBlock",
-                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "text": "${resetTime}",
                 "size": "small",
                 "isSubtle": true,
                 "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
             },
             {
                 "type": "Container",
@@ -928,10 +1073,17 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "Token breakdown",
+                        "text": "Weekly Quota",
                         "weight": "bolder",
                         "size": "small",
                         "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${weeklyReset}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none"
                     },
                     {
                         "type": "ColumnSet",
@@ -942,54 +1094,46 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "width": "stretch",
                                 "items": [
                                     {
-                                        "type": "TextBlock",
-                                        "text": "Input",
-                                        "size": "small",
-                                        "isSubtle": true
-                                    },
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${inputTokens}",
-                                        "size": "small",
-                                        "spacing": "none"
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${weeklyValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${weeklyRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            }
+                                        ]
                                     }
-                                ]
+                                ],
+                                "verticalContentAlignment": "center"
                             },
                             {
                                 "type": "Column",
-                                "width": "stretch",
+                                "width": "auto",
                                 "items": [
                                     {
                                         "type": "TextBlock",
-                                        "text": "Output",
+                                        "text": "${weeklyPercent} used",
                                         "size": "small",
                                         "isSubtle": true
-                                    },
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${outputTokens}",
-                                        "size": "small",
-                                        "spacing": "none"
                                     }
-                                ]
-                            },
-                            {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "Cache R",
-                                        "size": "small",
-                                        "isSubtle": true
-                                    },
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${cacheRead}",
-                                        "size": "small",
-                                        "spacing": "none"
-                                    }
-                                ]
+                                ],
+                                "verticalContentAlignment": "center"
                             }
                         ]
                     }
@@ -1007,30 +1151,141 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         "body": [
             {
                 "type": "TextBlock",
-                "text": "${providerName}",
+                "text": "5 Hours Quota",
                 "weight": "bolder",
                 "size": "medium"
             },
             {
                 "type": "TextBlock",
-                "text": "${totalTokens} tokens",
-                "size": "large",
-                "weight": "bolder",
-                "spacing": "none"
-            },
-            {
-                "type": "TextBlock",
-                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "text": "${resetTime}",
                 "size": "small",
                 "isSubtle": true,
                 "spacing": "none"
             },
             {
-                "type": "TextBlock",
-                "text": "Last activity: ${latestMessage}",
-                "size": "small",
-                "isSubtle": true,
-                "spacing": "none"
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "small",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Weekly Quota",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${weeklyReset}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${weeklyValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${weeklyRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${weeklyPercent} used",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 "type": "Container",
@@ -1043,6 +1298,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                         "weight": "bolder",
                         "size": "small",
                         "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${sessionCount} sessions • ${messageCount} messages",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none"
                     },
                     {
                         "type": "ColumnSet",
