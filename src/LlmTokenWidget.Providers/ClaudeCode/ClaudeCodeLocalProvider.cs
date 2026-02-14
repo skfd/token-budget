@@ -16,6 +16,7 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     private readonly StatuslineReader _statusReader;
     private readonly OAuthUsageClient _usageClient;
+
     private FileSystemWatcher? _statusWatcher;
     private bool _disposed;
 
@@ -28,10 +29,10 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     public event EventHandler? DataChanged;
 
-    public ClaudeCodeLocalProvider()
+    public ClaudeCodeLocalProvider(HttpGateway gateway)
     {
         _statusReader = new StatuslineReader();
-        _usageClient = new OAuthUsageClient();
+        _usageClient = new OAuthUsageClient(gateway);
 
         StartWatching();
     }
@@ -126,6 +127,5 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
         _disposed = true;
         _statusWatcher?.Dispose();
         _debounceTimer?.Dispose();
-        _usageClient.Dispose();
     }
 }

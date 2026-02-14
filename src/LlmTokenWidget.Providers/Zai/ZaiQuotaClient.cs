@@ -1,5 +1,4 @@
 using System;
-using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -12,19 +11,17 @@ namespace LlmTokenWidget.Providers.Zai;
 /// Calls the Z.ai quota endpoint to retrieve rate-limit data.
 /// Caches the result for 30 seconds to avoid excessive API calls.
 /// </summary>
-public sealed class ZaiQuotaClient : IDisposable
+public sealed class ZaiQuotaClient
 {
-    private const string QuotaUrl = "https://api.z.ai/api/monitor/usage/quota/limit";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
-    private readonly HttpClient _http;
+    private readonly HttpGateway _gateway;
     private OAuthUsageData? _cached;
     private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
-    private bool _disposed;
 
-    public ZaiQuotaClient()
+    public ZaiQuotaClient(HttpGateway gateway)
     {
-        _http = new HttpClient();
+        _gateway = gateway;
     }
 
     /// <summary>
@@ -45,10 +42,7 @@ public sealed class ZaiQuotaClient : IDisposable
                 return null;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, QuotaUrl);
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
-
-            var response = await _http.SendAsync(request, ct);
+            var response = await _gateway.SendAsync(ApiEndpoint.ZaiQuotaLimit, apiKey, ct);
             if (!response.IsSuccessStatusCode)
             {
                 System.Diagnostics.Debug.WriteLine(
@@ -102,13 +96,6 @@ public sealed class ZaiQuotaClient : IDisposable
             System.Diagnostics.Debug.WriteLine($"ZaiQuotaClient: {ex.Message}");
             return null;
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        _http.Dispose();
     }
 
     #region JSON deserialization models

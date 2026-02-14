@@ -12,7 +12,6 @@ namespace LlmTokenWidget.Providers.Copilot;
 public sealed class CopilotProvider : ILlmProvider, IDisposable
 {
     private readonly CopilotUsageClient _usageClient;
-    private bool _disposed;
 
     public string ProviderId => "copilot";
     public string DisplayName => "GitHub Copilot";
@@ -22,9 +21,9 @@ public sealed class CopilotProvider : ILlmProvider, IDisposable
     public event EventHandler? DataChanged;
 #pragma warning restore CS0067
 
-    public CopilotProvider()
+    public CopilotProvider(HttpGateway gateway)
     {
-        _usageClient = new CopilotUsageClient();
+        _usageClient = new CopilotUsageClient(gateway);
     }
 
     public Task<ProviderAvailability> CheckAvailabilityAsync()
@@ -55,8 +54,5 @@ public sealed class CopilotProvider : ILlmProvider, IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _usageClient.Dispose();
     }
 }

@@ -35,15 +35,17 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     {
         System.Diagnostics.Debug.WriteLine("WidgetProvider constructor called");
 
-        var claudeProvider = new ClaudeCodeLocalProvider();
+        var gateway = new LlmTokenWidget.Core.HttpGateway();
+
+        var claudeProvider = new ClaudeCodeLocalProvider(gateway);
         claudeProvider.DataChanged += OnProviderDataChanged;
         _providers[ClaudeWidgetId] = claudeProvider;
 
-        var zaiProvider = new ZaiLocalProvider();
+        var zaiProvider = new ZaiLocalProvider(gateway);
         zaiProvider.DataChanged += OnProviderDataChanged;
         _providers[ZaiWidgetId] = zaiProvider;
 
-        _providers[CopilotWidgetId] = new CopilotProvider();
+        _providers[CopilotWidgetId] = new CopilotProvider(gateway);
     }
 
     public void CreateWidget(WidgetContext widgetContext)

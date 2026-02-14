@@ -20,10 +20,10 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
 
     public event EventHandler? DataChanged;
 
-    public ZaiLocalProvider()
+    public ZaiLocalProvider(HttpGateway gateway)
     {
         _parser = new MessageParser();
-        _quotaClient = new ZaiQuotaClient();
+        _quotaClient = new ZaiQuotaClient(gateway);
         StartWatching();
     }
 
@@ -108,6 +108,5 @@ public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
         _disposed = true;
         _storageWatcher?.Dispose();
         _debounceTimer?.Dispose();
-        _quotaClient.Dispose();
     }
 }

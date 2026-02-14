@@ -1,5 +1,5 @@
 using System;
-using System.Net.Http;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -12,24 +12,25 @@ namespace LlmTokenWidget.Providers.Copilot;
 /// Calls the GitHub billing API to retrieve Copilot premium request usage.
 /// Caches the result for 30 seconds to avoid excessive API calls.
 /// </summary>
-public sealed class CopilotUsageClient : IDisposable
+public sealed class CopilotUsageClient
 {
-    private const string UserUrl = "https://api.github.com/user";
-    private const string UsageUrlTemplate = "https://api.github.com/users/{0}/settings/billing/premium_request/usage";
     private const int ProQuotaLimit = 300;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
-    private readonly HttpClient _http;
+    private static readonly IReadOnlyDictionary<string, string> GitHubHeaders = new Dictionary<string, string>
+    {
+        ["User-Agent"] = "LlmTokenWidget/1.0",
+        ["Accept"] = "application/json"
+    };
+
+    private readonly HttpGateway _gateway;
     private string? _cachedUsername;
     private OAuthUsageData? _cached;
     private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
-    private bool _disposed;
 
-    public CopilotUsageClient()
+    public CopilotUsageClient(HttpGateway gateway)
     {
-        _http = new HttpClient();
-        _http.DefaultRequestHeaders.Add("User-Agent", "LlmTokenWidget/1.0");
-        _http.DefaultRequestHeaders.Add("Accept", "application/json");
+        _gateway = gateway;
     }
 
     public async Task<OAuthUsageData?> FetchAsync(CancellationToken ct = default)
@@ -55,11 +56,8 @@ public sealed class CopilotUsageClient : IDisposable
             }
 
             // Fetch premium request usage
-            var url = string.Format(UsageUrlTemplate, _cachedUsername);
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _http.SendAsync(request, ct);
+            var response = await _gateway.SendAsync(ApiEndpoint.GitHubCopilotUsage, token, ct,
+                urlArg: _cachedUsername, extraHeaders: GitHubHeaders);
             if (!response.IsSuccessStatusCode)
             {
                 System.Diagnostics.Debug.WriteLine(
@@ -113,10 +111,7 @@ public sealed class CopilotUsageClient : IDisposable
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, UserUrl);
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _http.SendAsync(request, ct);
+            var response = await _gateway.SendAsync(ApiEndpoint.GitHubUser, token, ct, extraHeaders: GitHubHeaders);
             if (!response.IsSuccessStatusCode)
             {
                 System.Diagnostics.Debug.WriteLine(
@@ -137,13 +132,6 @@ public sealed class CopilotUsageClient : IDisposable
             System.Diagnostics.Debug.WriteLine($"CopilotUsageClient: username fetch failed: {ex.Message}");
             return null;
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        _http.Dispose();
     }
 
     #region JSON deserialization models

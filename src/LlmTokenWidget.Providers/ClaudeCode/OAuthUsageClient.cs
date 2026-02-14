@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -20,25 +20,27 @@ namespace LlmTokenWidget.Providers.ClaudeCode;
 /// disk-cached data (with reset simulation) until Claude Code is opened and
 /// refreshes the token, at which point live data resumes automatically.
 /// </summary>
-public sealed class OAuthUsageClient : IDisposable
+public sealed class OAuthUsageClient
 {
-    private const string UsageUrl = "https://api.anthropic.com/api/oauth/usage";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
+
+    private static readonly IReadOnlyDictionary<string, string> ExtraHeaders = new Dictionary<string, string>
+    {
+        ["anthropic-beta"] = "oauth-2025-04-20",
+        ["User-Agent"] = "claude-code/2.0.37"
+    };
 
     private static readonly string DiskCachePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         ".claude", "oauth-usage-cache.json");
 
-    private readonly HttpClient _http;
+    private readonly HttpGateway _gateway;
     private OAuthUsageData? _cached;
     private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
-    private bool _disposed;
 
-    public OAuthUsageClient()
+    public OAuthUsageClient(HttpGateway gateway)
     {
-        _http = new HttpClient();
-        _http.DefaultRequestHeaders.Add("anthropic-beta", "oauth-2025-04-20");
-        _http.DefaultRequestHeaders.Add("User-Agent", "claude-code/2.0.37");
+        _gateway = gateway;
 
         // Load last-known data from disk so we never start at zero
         _cached = LoadDiskCache();
@@ -65,10 +67,7 @@ public sealed class OAuthUsageClient : IDisposable
                 return SimulateResets(_cached);
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, UsageUrl);
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _http.SendAsync(request, ct);
+            var response = await _gateway.SendAsync(ApiEndpoint.AnthropicOAuthUsage, token, ct, extraHeaders: ExtraHeaders);
             if (!response.IsSuccessStatusCode)
             {
                 System.Diagnostics.Debug.WriteLine(
@@ -175,13 +174,6 @@ public sealed class OAuthUsageClient : IDisposable
             entry.MonthlyLimit,
             entry.UsedCredits,
             entry.Utilization);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        _http.Dispose();
     }
 
     #region JSON deserialization models
