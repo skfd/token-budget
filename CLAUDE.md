@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Primary focus is monitoring Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) by parsing local JSONL files, with extensibility for Anthropic API, OpenAI, and Google Gemini providers.
+Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) and Z.ai/GLM usage from opencode CLI, with extensibility for other providers.
 
 **Full architecture plan**: `C:\Users\kk\.claude\plans\joyful-marinating-thunder.md`
 
@@ -22,12 +22,20 @@ Windows 11 Widgets Board widget for displaying LLM token usage, costs, and coold
 ```
 LlmTokenWidget.sln
 ├── src/LlmTokenWidget.Core/         # Interfaces, models, shared services
-├── src/LlmTokenWidget.Providers/    # ClaudeCode/Anthropic/OpenAI/Gemini providers
+├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai providers
+│   ├── ClaudeCode/                  # Claude Code local provider
+│   └── Zai/                         # Z.ai/opencode CLI provider
 ├── src/LlmTokenWidget.App/          # COM widget provider executable
 └── packaging/LlmTokenWidget.Package/ # MSIX packaging project
 ```
 
 ## Build Commands
+
+### Quick rebuild and deploy (recommended)
+```powershell
+.\rebuild-deploy.ps1
+```
+This script handles the full cycle: version increment, process cleanup, rebuild, and package registration.
 
 ### Build the solution
 ```powershell
@@ -67,7 +75,7 @@ Then deploy the resulting MSIX from Visual Studio or via `Add-AppxPackage`.
 2. `CLSID_WidgetProvider` constant in `Program.cs`
 3. `<com:Class Id="...">` and `<CreateInstance ClassId="...">` in `Package.appxmanifest`
 
-Widget Definition IDs (`Claude_Usage_Widget`, `LLM_Summary_Widget`) must also match between manifest and `_widgetFactories` dictionary in `WidgetProvider.cs`.
+Widget Definition IDs (`Claude_Usage_Widget`, `Zai_Usage_Widget`) must also match between manifest and provider lookups in `WidgetProvider.cs`.
 
 ### Provider Pattern
 
@@ -79,19 +87,15 @@ public interface ILlmProvider
     string ProviderId { get; }
     string DisplayName { get; }
     Task<ProviderAvailability> CheckAvailabilityAsync();
-    Task<IUsageData> FetchUsageAsync(CancellationToken ct);
-    Task<CooldownEstimate?> EstimateCooldownAsync(CancellationToken ct);
+    Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct);
     TimeSpan PollingInterval { get; }
-    bool RequiresApiKey { get; }
-    string? CredentialTarget { get; }
+    event EventHandler? DataChanged;
 }
 ```
 
-Four implementations:
-- **ClaudeCodeLocalProvider**: Zero-config, parses `~/.claude/projects/` JSONL files
-- **AnthropicApiProvider**: Uses Admin API for organization-level usage
-- **OpenAiApiProvider**: Uses Admin API for organization-level usage
-- **GeminiApiProvider**: Stub (no historical usage API available)
+Current implementations:
+- **ClaudeCodeLocalProvider**: Reads `~/.claude/widget-data.json` for live session data + OAuth API for rate limits
+- **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage
 
 ### JSONL Parsing (Claude Code Local Data)
 
@@ -121,6 +125,41 @@ Four implementations:
 - Sum all `message.usage.*` fields (input, output, cache_creation, cache_read)
 - Include subagent files in totals
 - Parse ISO 8601 timestamps for cooldown estimation
+
+### Z.ai Provider (Opencode CLI Data)
+
+**Data locations**:
+- Messages: `%USERPROFILE%\.local\share\opencode\storage\message\<session>\*.json`
+- Auth: `%USERPROFILE%\.local\share\opencode\auth.json`
+
+**Message format** (each file is a JSON object):
+```json
+{
+  "id": "msg_xxx",
+  "sessionID": "ses_xxx",
+  "role": "assistant",
+  "time": {
+    "created": 1739500000000,
+    "completed": 1739500001000
+  },
+  "tokens": {
+    "total": 1234,
+    "input": 1000,
+    "output": 200,
+    "reasoning": 34,
+    "cache": { "read": 500, "write": 100 }
+  },
+  "modelID": "glm-4",
+  "providerID": "zai"
+}
+```
+
+**Parser requirements**:
+- Scan all session directories under `storage/message/`
+- Filter for `role == "assistant"` messages only
+- Sum `tokens.input`, `tokens.output`, `tokens.reasoning`, `tokens.cache.read`, `tokens.cache.write`
+- Track session count and message count
+- Convert millisecond timestamps to DateTimeOffset
 
 ### Cooldown Estimation
 
@@ -155,17 +194,15 @@ Two widgets registered in `Package.appxmanifest`:
 
 | Widget ID | Display Name | Sizes | Purpose |
 |-----------|-------------|-------|---------|
-| `Claude_Usage_Widget` | Claude Code Usage | S/M/L | Local JSONL token usage + cooldown |
-| `LLM_Summary_Widget` | LLM Usage Summary | M/L | Multi-provider aggregated view |
+| `Claude_Usage_Widget` | Claude Code Usage v18 | S/M/L | Local token usage + OAuth rate limits |
+| `Zai_Usage_Widget` | Z.ai Usage | S/M/L | GLM/z.ai token usage from opencode CLI |
 
 ## Polling Strategy
 
 | Provider | Interval | Update Mechanism |
 |----------|----------|------------------|
-| Claude Code Local | 30s | FileSystemWatcher + timer fallback |
-| Anthropic API | 5 min | Timer |
-| OpenAI API | 5 min | Timer |
-| Gemini API | 10 min | Timer |
+| Claude Code Local | 5s | FileSystemWatcher + timer fallback |
+| Z.ai Local | 5s | FileSystemWatcher + timer fallback |
 
 Polling only runs when widgets are active (Widgets board open).
 
@@ -191,6 +228,9 @@ Polling only runs when widgets are active (Widgets board open).
 
 - `src/LlmTokenWidget.App/WidgetProvider.cs` — COM widget lifecycle (IWidgetProvider)
 - `src/LlmTokenWidget.App/Program.cs` — COM server entry point with CLSID registration
-- `src/LlmTokenWidget.Providers/ClaudeCode/JsonlParser.cs` — Critical path for local data
-- `src/LlmTokenWidget.Providers/ClaudeCode/CooldownEstimator.cs` — Rolling window calculation
+- `src/LlmTokenWidget.Providers/ClaudeCode/StatuslineReader.cs` — Reads live session data from widget-data.json
+- `src/LlmTokenWidget.Providers/ClaudeCode/OAuthUsageClient.cs` — Fetches rate-limit data from Anthropic API
+- `src/LlmTokenWidget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
+- `src/LlmTokenWidget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
 - `packaging/LlmTokenWidget.Package/Package.appxmanifest` — COM + widget registration
+- `rebuild-deploy.ps1` — Full rebuild and deploy script

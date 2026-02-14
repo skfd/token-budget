@@ -1,4 +1,27 @@
-# Rebuild and Deploy Script for LLM Token Widget
+<#
+.SYNOPSIS
+    Rebuilds and deploys the LLM Token Widget to Windows 11 Widgets Board.
+
+.DESCRIPTION
+    This script performs a full rebuild and deployment cycle:
+    1. Increments the version number (for package identity changes)
+    2. Unregisters any existing package
+    3. Stops widget-related processes to release file locks
+    4. Rebuilds the solution using Visual Studio
+    5. Registers the new package with Windows
+
+.PREREQUISITES
+    - Visual Studio 2022 with "Windows application development" workload
+    - Windows Developer Mode enabled
+    - .NET 8 SDK
+
+.EXAMPLE
+    .\rebuild-deploy.ps1
+
+.NOTES
+    Run from the repository root directory.
+    After deployment, press Win+W to open Widgets Board and add widgets.
+#>
 
 Write-Host "=== Rebuild and Deploy LLM Token Widget ===" -ForegroundColor Cyan
 

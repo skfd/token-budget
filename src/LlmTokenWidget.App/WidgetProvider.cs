@@ -6,6 +6,7 @@ using Microsoft.Windows.Widgets;
 using Microsoft.Windows.Widgets.Providers;
 using LlmTokenWidget.Core;
 using LlmTokenWidget.Providers.ClaudeCode;
+using LlmTokenWidget.Providers.Zai;
 
 namespace LlmTokenWidget.App;
 
@@ -14,12 +15,14 @@ namespace LlmTokenWidget.App;
 [Guid("9F910C81-08A4-461F-93A6-96809C70A95D")] // CRITICAL: Must match Program.cs and manifest
 public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 {
+    private const string ClaudeWidgetId = "Claude_Usage_Widget";
+    private const string ZaiWidgetId = "Zai_Usage_Widget";
+
     private readonly Dictionary<string, WidgetState> _activeWidgets = new();
-    private readonly ILlmProvider _provider;
+    private readonly Dictionary<string, ILlmProvider> _providers = new();
     private Timer? _refreshTimer;
     private readonly object _lock = new();
 
-    /// <summary>Per-widget tracking state.</summary>
     private sealed class WidgetState
     {
         public string DefinitionId { get; set; } = "";
@@ -29,8 +32,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     public WidgetProvider()
     {
         System.Diagnostics.Debug.WriteLine("WidgetProvider constructor called");
-        _provider = new ClaudeCodeLocalProvider();
-        _provider.DataChanged += OnProviderDataChanged;
+
+        var claudeProvider = new ClaudeCodeLocalProvider();
+        claudeProvider.DataChanged += OnProviderDataChanged;
+        _providers[ClaudeWidgetId] = claudeProvider;
+
+        var zaiProvider = new ZaiLocalProvider();
+        zaiProvider.DataChanged += OnProviderDataChanged;
+        _providers[ZaiWidgetId] = zaiProvider;
     }
 
     public void CreateWidget(WidgetContext widgetContext)
@@ -104,10 +113,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     {
         lock (_lock)
         {
-            _refreshTimer ??= new Timer(_ => RefreshAllWidgets(),
-                null,
-                _provider.PollingInterval,
-                _provider.PollingInterval);
+            if (_refreshTimer == null)
+            {
+                var minInterval = TimeSpan.FromSeconds(5);
+                _refreshTimer = new Timer(_ => RefreshAllWidgets(),
+                    null,
+                    minInterval,
+                    minInterval);
+            }
         }
     }
 
@@ -145,12 +158,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             if (!_activeWidgets.TryGetValue(widgetId, out var state))
                 return;
 
-            var usageTask = _provider.FetchUsageAsync(CancellationToken.None);
-            // Cooldown estimation removed (Phase 3 cleanup)
+            if (!_providers.TryGetValue(state.DefinitionId, out var provider))
+                return;
+
+            var usageTask = provider.FetchUsageAsync(CancellationToken.None);
             var usage = usageTask.GetAwaiter().GetResult();
 
-            var templateJson = GetTemplate(state.Size);
-            var dataJson = BuildDataJson(usage, state.Size); // Removed cooldown arg
+            var templateJson = GetTemplate(state.DefinitionId, state.Size);
+            var dataJson = BuildDataJson(usage, state.DefinitionId, state.Size);
 
             var updateOptions = new WidgetUpdateRequestOptions(widgetId)
             {
@@ -166,7 +181,16 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         }
     }
 
-    private string BuildDataJson(UsageSnapshot usage, WidgetSize size)
+    private string BuildDataJson(UsageSnapshot usage, string definitionId, WidgetSize size)
+    {
+        return definitionId switch
+        {
+            ZaiWidgetId => BuildZaiDataJson(usage, size),
+            _ => BuildClaudeDataJson(usage, size)
+        };
+    }
+
+    private string BuildClaudeDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var total = usage.TotalTokens;
         var oauth = usage.OAuthUsage;
@@ -268,6 +292,31 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         """;
     }
 
+    private string BuildZaiDataJson(UsageSnapshot usage, WidgetSize size)
+    {
+        var total = usage.TotalTokens;
+
+        var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
+        var providerName = "Z.ai";
+
+        return $$"""
+        {
+            "providerName": "{{providerName}}",
+            "totalTokens": "{{FormatNumber(total.Total)}}",
+            "inputTokens": "{{FormatNumber(total.InputTokens)}}",
+            "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
+            "reasoningTokens": "{{FormatNumber(0)}}",
+            "cacheWrite": "{{FormatNumber(total.CacheCreationTokens)}}",
+            "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
+            "sessionCount": "{{usage.SessionCount}}",
+            "messageCount": "{{usage.MessageCount}}",
+            "earliestMessage": "{{usage.EarliestMessage?.LocalDateTime:MMM d, h:mm tt}}",
+            "latestMessage": "{{usage.LatestMessage?.LocalDateTime:MMM d, h:mm tt}}",
+            "size": "{{size}}"
+        }
+        """;
+    }
+
     private static string FormatNumber(long number)
     {
         return number switch
@@ -281,13 +330,26 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
     #region Adaptive Card Templates
 
-    private static string GetTemplate(WidgetSize size) => size switch
+    private static string GetTemplate(string definitionId, WidgetSize size)
     {
-        WidgetSize.Small => SmallTemplate,
-        WidgetSize.Medium => MediumTemplate,
-        WidgetSize.Large => LargeTemplate,
-        _ => MediumTemplate
-    };
+        return definitionId switch
+        {
+            ZaiWidgetId => size switch
+            {
+                WidgetSize.Small => ZaiSmallTemplate,
+                WidgetSize.Medium => ZaiMediumTemplate,
+                WidgetSize.Large => ZaiLargeTemplate,
+                _ => ZaiMediumTemplate
+            },
+            _ => size switch
+            {
+                WidgetSize.Small => SmallTemplate,
+                WidgetSize.Medium => MediumTemplate,
+                WidgetSize.Large => LargeTemplate,
+                _ => MediumTemplate
+            }
+        };
+    }
 
     // 1x1 blue (#6699FF) pixel for progress bar fill
     private const string BluePx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
@@ -769,6 +831,272 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheCreation}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Cache R",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${cacheRead}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    // 1x1 teal (#00BCF2) pixel for Z.ai progress bar fill - Windows 11 accent
+    private const string TealPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==";
+
+    private const string ZaiSmallTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "${providerName}",
+                "weight": "bolder",
+                "size": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${totalTokens} tokens",
+                "size": "medium",
+                "weight": "bolder",
+                "spacing": "none"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            }
+        ]
+    }
+    """;
+
+    private const string ZaiMediumTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "${providerName}",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${totalTokens} tokens",
+                "size": "large",
+                "weight": "bolder",
+                "spacing": "none"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "Container",
+                "spacing": "small",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Token breakdown",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Input",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${inputTokens}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Output",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${outputTokens}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Cache R",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${cacheRead}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    private const string ZaiLargeTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "${providerName}",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${totalTokens} tokens",
+                "size": "large",
+                "weight": "bolder",
+                "spacing": "none"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${sessionCount} sessions • ${messageCount} messages",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Last activity: ${latestMessage}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "Container",
+                "spacing": "small",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Token breakdown",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Input",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${inputTokens}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Output",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${outputTokens}",
+                                        "size": "small",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Cache W",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${cacheWrite}",
                                         "size": "small",
                                         "spacing": "none"
                                     }
