@@ -14,29 +14,32 @@ if ($oldPkg) {
     Write-Host "Old package unregistered" -ForegroundColor Green
 }
 
-# Now kill any running widget provider processes
-Write-Host "Stopping widget provider processes..." -ForegroundColor Yellow
-$maxAttempts = 5
-$attempt = 0
-while ($attempt -lt $maxAttempts) {
-    $processes = Get-Process -Name "LlmTokenWidget.App" -ErrorAction SilentlyContinue
-    if ($processes) {
-        $processes | Stop-Process -Force
-        Start-Sleep -Seconds 1
-        $attempt++
-    } else {
-        break
+# Kill widget provider, WidgetService, and WidgetBoard so cached metadata is cleared
+Write-Host "Stopping widget processes..." -ForegroundColor Yellow
+foreach ($procName in @("LlmTokenWidget.App", "WidgetService", "WidgetBoard")) {
+    $maxAttempts = 5
+    $attempt = 0
+    while ($attempt -lt $maxAttempts) {
+        $procs = Get-Process -Name $procName -ErrorAction SilentlyContinue
+        if ($procs) {
+            $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 500
+            $attempt++
+        } else {
+            break
+        }
     }
 }
 
-if (Get-Process -Name "LlmTokenWidget.App" -ErrorAction SilentlyContinue) {
+$remaining = Get-Process -Name "LlmTokenWidget.App" -ErrorAction SilentlyContinue
+if ($remaining) {
     Write-Host "WARNING: Could not stop all widget processes. Build may fail." -ForegroundColor Yellow
 } else {
     Write-Host "All widget processes stopped" -ForegroundColor Green
 }
 
-# Extra delay to ensure files are unlocked
-Start-Sleep -Seconds 1
+# Delay to ensure files are unlocked and services fully stopped
+Start-Sleep -Seconds 2
 
 # Find Visual Studio devenv.com
 $devenv = "C:\Program Files\Microsoft Visual Studio\18\Insiders\Common7\IDE\devenv.com"

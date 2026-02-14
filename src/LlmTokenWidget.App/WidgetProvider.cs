@@ -15,7 +15,7 @@ namespace LlmTokenWidget.App;
 public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 {
     private readonly Dictionary<string, WidgetState> _activeWidgets = new();
-    private readonly ClaudeCodeLocalProvider _provider;
+    private readonly ILlmProvider _provider;
     private Timer? _refreshTimer;
     private readonly object _lock = new();
 
@@ -199,23 +199,22 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             if (remaining.TotalSeconds > 0)
             {
                 resetText = remaining.TotalHours >= 1
-                    ? $"Resets in {remaining.Hours}h {remaining.Minutes}m"
-                    : $"Resets in {remaining.Minutes}m";
+                    ? $"Resets in {(int)remaining.TotalHours} hr {remaining.Minutes} min"
+                    : $"Resets in {remaining.Minutes} min";
             }
         }
 
-        // 7-day info line
-        var sevenDayText = "";
-        if (sevenDay != null)
+        // 7-day data (split for template use)
+        var sevenDayPercent = sevenDay != null ? $"{sevenDay.Utilization:F0}%" : "—%";
+        var sevenDayValue = sevenDay != null ? (int)Math.Round(sevenDay.Utilization) : 0;
+        var sevenDayValueClamped = sevenDay != null ? Math.Max(1, Math.Min(100, sevenDayValue)) : 0;
+        var sevenDayReset = "";
+        if (sevenDay?.ResetsAt != null)
         {
-            sevenDayText = $"7d: {sevenDay.Utilization:F0}%";
-            if (sevenDay.ResetsAt != null)
+            var remaining7d = sevenDay.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining7d.TotalSeconds > 0)
             {
-                var remaining7d = sevenDay.ResetsAt.Value - DateTimeOffset.Now;
-                if (remaining7d.TotalHours > 0)
-                {
-                    sevenDayText += $" (resets {remaining7d.Days}d {remaining7d.Hours}h)";
-                }
+                sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
 
@@ -223,7 +222,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var extraText = "";
         if (extra is { IsEnabled: true })
         {
-            extraText = $"Overage: ${extra.UsedCredits:F0}/${extra.MonthlyLimit:F0} ({extra.Utilization:F0}%)";
+            extraText = $"Overage: ${extra.UsedCredits / 100.0:F0}/${extra.MonthlyLimit / 100.0:F0} ({extra.Utilization:F0}%)";
         }
 
         var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
@@ -236,24 +235,30 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Claude Code";
         var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
 
+        // Remaining bar width for progress bar background
+        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
+        var sevenDayRemaining = Math.Max(1, 100 - sevenDayValueClamped);
+
         return $$"""
         {
             "statusEmoji": "{{statusEmoji}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "percentValueClamped": {{percentValueClamped}},
+            "percentRemaining": {{percentRemaining}},
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
             "cacheCreation": "{{FormatNumber(total.CacheCreationTokens)}}",
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
-            "tokenLimit": "—",
-            "windowTokens": "—",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDay": "{{sevenDayText}}",
+            "sevenDayPercent": "{{sevenDayPercent}}",
+            "sevenDayValue": {{sevenDayValue}},
+            "sevenDayValueClamped": {{sevenDayValueClamped}},
+            "sevenDayRemaining": {{sevenDayRemaining}},
+            "sevenDayReset": "{{sevenDayReset}}",
             "extraUsage": "{{extraText}}",
-            "updatedTime": "{{updatedTime}}",
             "planName": "{{planName}}",
             "cost": "{{costText}}",
             "model": "{{modelText}}",
@@ -284,6 +289,11 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         _ => MediumTemplate
     };
 
+    // 1x1 blue (#6699FF) pixel for progress bar fill
+    private const string BluePx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
+    // 1x1 dark gray (#3D3D3D) pixel for progress bar track
+    private const string GrayPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==";
+
     private const string SmallTemplate = """
     {
         "type": "AdaptiveCard",
@@ -291,56 +301,68 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         "version": "1.5",
         "body": [
             {
-                "type": "Container",
-                "items": [
+                "type": "TextBlock",
+                "text": "Plan usage limits",
+                "weight": "bolder",
+                "size": "small"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
                     {
-                        "type": "TextBlock",
-                        "text": "${statusEmoji} ${model}",
-                        "weight": "bolder",
-                        "size": "medium"
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${windowTokens} / ${tokenLimit} ${cost}",
-                        "size": "small",
-                        "spacing": "small"
-                    },
-                    {
-                        "type": "ColumnSet",
-                        "columns": [
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
                             {
-                                "type": "Column",
-                                "width": "${percentValueClamped}",
-                                "items": [
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
                                     {
-                                        "type": "TextBlock",
-                                        "text": " ",
-                                        "size": "small",
-                                        "height": "stretch"
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
                                     }
-                                ],
-                                "backgroundImage": {
-                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
-                                    "fillMode": "repeatHorizontally"
-                                },
-                                "minHeight": "6px"
-                            },
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
                             {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": []
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
                             }
                         ],
-                        "spacing": "small"
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${percentText} used",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "small"
+                        "verticalContentAlignment": "center"
                     }
                 ]
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
             }
         ]
     }
@@ -353,22 +375,147 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         "version": "1.5",
         "body": [
             {
+                "type": "TextBlock",
+                "text": "Plan usage limits",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Current session",
+                "weight": "bolder",
+                "size": "small",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "TextBlock",
+                "text": "${extraUsage}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none",
+                "$when": "${extraUsage != ''}"
+            },
+            {
                 "type": "Container",
+                "spacing": "small",
+                "separator": true,
                 "items": [
                     {
+                        "type": "TextBlock",
+                        "text": "Weekly limits",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "All models",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${sevenDayReset}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
                         "type": "ColumnSet",
+                        "spacing": "small",
                         "columns": [
                             {
                                 "type": "Column",
                                 "width": "stretch",
                                 "items": [
                                     {
-                                        "type": "TextBlock",
-                                        "text": "${statusEmoji} ${model}",
-                                        "weight": "bolder",
-                                        "size": "medium"
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            }
+                                        ]
                                     }
-                                ]
+                                ],
+                                "verticalContentAlignment": "center"
                             },
                             {
                                 "type": "Column",
@@ -376,52 +523,202 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "items": [
                                     {
                                         "type": "TextBlock",
-                                        "text": "${percentText}",
-                                        "weight": "bolder",
-                                        "size": "medium",
-                                        "color": "accent"
+                                        "text": "${sevenDayPercent} used",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    private const string LargeTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Plan usage limits",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Current session",
+                "weight": "bolder",
+                "size": "small",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
                                     }
                                 ]
                             }
-                        ]
+                        ],
+                        "verticalContentAlignment": "center"
                     },
                     {
-                        "type": "ColumnSet",
-                        "columns": [
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
                             {
-                                "type": "Column",
-                                "width": "${percentValueClamped}",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": " ",
-                                        "size": "small"
-                                    }
-                                ],
-                                "backgroundImage": {
-                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
-                                    "fillMode": "repeatHorizontally"
-                                },
-                                "minHeight": "6px"
-                            },
-                            {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": []
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
                             }
                         ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "TextBlock",
+                "text": "${extraUsage}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none",
+                "$when": "${extraUsage != ''}"
+            },
+            {
+                "type": "Container",
+                "spacing": "small",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Weekly limits",
+                        "weight": "bolder",
+                        "size": "small",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${planName} · 5h: ${percentText}  ${sevenDay}",
+                        "text": "All models",
+                        "weight": "bolder",
+                        "size": "small",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${sevenDayReset}",
                         "size": "small",
                         "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "6px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${sevenDayPercent} used",
+                                        "size": "small",
+                                        "isSubtle": true
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "small",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Token breakdown",
+                        "weight": "bolder",
+                        "size": "small",
                         "spacing": "small"
                     },
                     {
                         "type": "ColumnSet",
-                        "spacing": "medium",
+                        "spacing": "small",
                         "columns": [
                             {
                                 "type": "Column",
@@ -436,7 +733,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                     {
                                         "type": "TextBlock",
                                         "text": "${inputTokens}",
-                                        "weight": "bolder",
+                                        "size": "small",
                                         "spacing": "none"
                                     }
                                 ]
@@ -454,7 +751,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                     {
                                         "type": "TextBlock",
                                         "text": "${outputTokens}",
-                                        "weight": "bolder",
+                                        "size": "small",
                                         "spacing": "none"
                                     }
                                 ]
@@ -472,7 +769,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheCreation}",
-                                        "weight": "bolder",
+                                        "size": "small",
                                         "spacing": "none"
                                     }
                                 ]
@@ -490,192 +787,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheRead}",
-                                        "weight": "bolder",
+                                        "size": "small",
                                         "spacing": "none"
                                     }
                                 ]
                             }
                         ]
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${extraUsage}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "none",
-                        "$when": "${extraUsage != ''}"
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${resetTime} · Updated ${updatedTime}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "medium"
-                    }
-                ]
-            }
-        ]
-    }
-    """;
-
-    private const string LargeTemplate = """
-    {
-        "type": "AdaptiveCard",
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "version": "1.5",
-        "body": [
-            {
-                "type": "Container",
-                "items": [
-                    {
-                        "type": "ColumnSet",
-                        "columns": [
-                            {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${statusEmoji} ${model}",
-                                        "weight": "bolder",
-                                        "size": "large"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "Column",
-                                "width": "auto",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${percentText}",
-                                        "weight": "bolder",
-                                        "size": "large",
-                                        "color": "accent"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${planName} · ${cost} · ${context}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "small"
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "5h: ${percentText}  ${sevenDay}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "none"
-                    },
-                    {
-                        "type": "ColumnSet",
-                        "columns": [
-                            {
-                                "type": "Column",
-                                "width": "${percentValueClamped}",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": " ",
-                                        "size": "small"
-                                    }
-                                ],
-                                "backgroundImage": {
-                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
-                                    "fillMode": "repeatHorizontally"
-                                },
-                                "minHeight": "8px"
-                            },
-                            {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": []
-                            }
-                        ],
-                        "spacing": "small"
-                    },
-                    {
-                        "type": "ColumnSet",
-                        "spacing": "small",
-                        "columns": [
-                            {
-                                "type": "Column",
-                                "width": "stretch",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "Window: ${windowTokens} / ${tokenLimit}",
-                                        "size": "small",
-                                        "isSubtle": true
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "Column",
-                                "width": "auto",
-                                "items": [
-                                    {
-                                        "type": "TextBlock",
-                                        "text": "${resetTime}",
-                                        "size": "small",
-                                        "isSubtle": true,
-                                        "color": "attention"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "Token Breakdown (All Time)",
-                        "weight": "bolder",
-                        "size": "small",
-                        "spacing": "large"
-                    },
-                    {
-                        "type": "FactSet",
-                        "spacing": "small",
-                        "facts": [
-                            {
-                                "title": "Total",
-                                "value": "${totalTokens}"
-                            },
-                            {
-                                "title": "Input",
-                                "value": "${inputTokens}"
-                            },
-                            {
-                                "title": "Output",
-                                "value": "${outputTokens}"
-                            },
-                            {
-                                "title": "Cache Write",
-                                "value": "${cacheCreation}"
-                            },
-                            {
-                                "title": "Cache Read",
-                                "value": "${cacheRead}"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${extraUsage}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "none",
-                        "$when": "${extraUsage != ''}"
-                    },
-                    {
-                        "type": "TextBlock",
-                        "text": "${resetTime} · Updated ${updatedTime}",
-                        "size": "small",
-                        "isSubtle": true,
-                        "spacing": "large"
                     }
                 ]
             }
