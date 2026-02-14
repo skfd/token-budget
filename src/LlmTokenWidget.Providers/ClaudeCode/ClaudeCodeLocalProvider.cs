@@ -8,13 +8,14 @@ namespace LlmTokenWidget.Providers.ClaudeCode;
 
 /// <summary>
 /// Claude Code local provider.
-/// PHASE 3 CLEANUP: Removed JSONL parsing/estimation logic.
-/// Now only returns real-time session data from the Statusline Bridge.
+/// Reads real-time session data from the Statusline Bridge
+/// and rate-limit data from Anthropic's OAuth usage API.
 /// </summary>
 public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 {
 
     private readonly StatuslineReader _statusReader;
+    private readonly OAuthUsageClient _usageClient;
     private FileSystemWatcher? _statusWatcher;
     private bool _disposed;
 
@@ -27,31 +28,28 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     public event EventHandler? DataChanged;
 
-// DetectedPlan removed (Phase 3 cleanup)
-
     public ClaudeCodeLocalProvider()
     {
         _statusReader = new StatuslineReader();
-
-        // Plan detection removed (Phase 3 cleanup)
+        _usageClient = new OAuthUsageClient();
 
         StartWatching();
     }
 
     public Task<ProviderAvailability> CheckAvailabilityAsync()
     {
-        // For now, we just check if the status file path implies Claude is installed/configured
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var claudeDir = Path.Combine(userProfile, ".claude");
         var exists = Directory.Exists(claudeDir);
+        var hasCreds = OAuthCredentialReader.CredentialsExist();
         return Task.FromResult(new ProviderAvailability(
             exists,
-            exists ? null : $"Directory not found: {claudeDir}"));
+            exists ? (hasCreds ? null : "OAuth credentials not found") : $"Directory not found: {claudeDir}"));
     }
 
-    public Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
+    public async Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
     {
-        // Only read live status from statusline bridge
+        // Read live status from statusline bridge
         var liveStatus = _statusReader.Read();
 
         TokenBreakdown totalTokens;
@@ -66,20 +64,23 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
         }
         else
         {
-            // No data available
             totalTokens = new TokenBreakdown(0, 0, 0, 0);
         }
 
+        // Fetch rate-limit data from OAuth API
+        var oauthUsage = await _usageClient.FetchAsync(ct);
+
         var snapshot = new UsageSnapshot(
             TotalTokens: totalTokens,
-            SessionCount: 0, // Not tracked without JSONL
-            MessageCount: 0, // Not tracked without JSONL
+            SessionCount: 0,
+            MessageCount: 0,
             EarliestMessage: null,
             LatestMessage: liveStatus?.CapturedAt,
             FetchedAt: DateTimeOffset.UtcNow,
-            LiveStatus: liveStatus);
+            LiveStatus: liveStatus,
+            OAuthUsage: oauthUsage);
 
-        return Task.FromResult(snapshot);
+        return snapshot;
     }
 
 
@@ -125,5 +126,6 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
         _disposed = true;
         _statusWatcher?.Dispose();
         _debounceTimer?.Dispose();
+        _usageClient.Dispose();
     }
 }

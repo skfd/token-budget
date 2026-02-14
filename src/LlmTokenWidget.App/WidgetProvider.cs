@@ -169,15 +169,66 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     private string BuildDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var total = usage.TotalTokens;
-        
-        // Cooldown/Limit logic temporarily removed
-        var statusEmoji = "⚪"; // Neutral status until web scraper implemented
-        var percentText = "—%"; // Placeholder
-        var resetText = ""; // Placeholder until web scraper
+        var oauth = usage.OAuthUsage;
+
+        // Primary limit: 5-hour window
+        var fiveHour = oauth?.FiveHour;
+        var sevenDay = oauth?.SevenDay;
+        var extra = oauth?.ExtraUsage;
+
+        // Utilization percentage from 5h window
+        var utilization = fiveHour?.Utilization ?? 0;
+        var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
+        var percentValue = (int)Math.Round(utilization);
+        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
+        if (fiveHour == null) percentValueClamped = 0;
+
+        // Status emoji based on utilization
+        var statusEmoji = utilization switch
+        {
+            > 85 => "🔴",
+            > 60 => "🟡",
+            _ => fiveHour != null ? "🟢" : "⚪"
+        };
+
+        // Reset countdown
+        var resetText = "";
+        if (fiveHour?.ResetsAt != null)
+        {
+            var remaining = fiveHour.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining.TotalSeconds > 0)
+            {
+                resetText = remaining.TotalHours >= 1
+                    ? $"Resets in {remaining.Hours}h {remaining.Minutes}m"
+                    : $"Resets in {remaining.Minutes}m";
+            }
+        }
+
+        // 7-day info line
+        var sevenDayText = "";
+        if (sevenDay != null)
+        {
+            sevenDayText = $"7d: {sevenDay.Utilization:F0}%";
+            if (sevenDay.ResetsAt != null)
+            {
+                var remaining7d = sevenDay.ResetsAt.Value - DateTimeOffset.Now;
+                if (remaining7d.TotalHours > 0)
+                {
+                    sevenDayText += $" (resets {remaining7d.Days}d {remaining7d.Hours}h)";
+                }
+            }
+        }
+
+        // Extra usage info
+        var extraText = "";
+        if (extra is { IsEnabled: true })
+        {
+            extraText = $"Overage: ${extra.UsedCredits:F0}/${extra.MonthlyLimit:F0} ({extra.Utilization:F0}%)";
+        }
 
         var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
 
-        var planName = "Claude Code"; // Plan detection removed in Phase 3 cleanup
+        var planName = "Claude Code";
 
         // Extract live status data if available
         var live = usage.LiveStatus;
@@ -189,8 +240,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         {
             "statusEmoji": "{{statusEmoji}}",
             "percentText": "{{percentText}}",
-            "percentValue": 0,
-            "percentValueClamped": 0,
+            "percentValue": {{percentValue}},
+            "percentValueClamped": {{percentValueClamped}},
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
@@ -200,6 +251,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "windowTokens": "—",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
+            "sevenDay": "{{sevenDayText}}",
+            "extraUsage": "{{extraText}}",
             "updatedTime": "{{updatedTime}}",
             "planName": "{{planName}}",
             "cost": "{{costText}}",
@@ -361,7 +414,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${planName} · 5h window: ${windowTokens} / ${tokenLimit}",
+                        "text": "${planName} · 5h: ${percentText}  ${sevenDay}",
                         "size": "small",
                         "isSubtle": true,
                         "spacing": "small"
@@ -446,7 +499,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${messageCount} messages · Updated ${updatedTime}",
+                        "text": "${extraUsage}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none",
+                        "$when": "${extraUsage != ''}"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${resetTime} · Updated ${updatedTime}",
                         "size": "small",
                         "isSubtle": true,
                         "spacing": "medium"
@@ -502,6 +563,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                         "size": "small",
                         "isSubtle": true,
                         "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "5h: ${percentText}  ${sevenDay}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none"
                     },
                     {
                         "type": "ColumnSet",
@@ -596,7 +664,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${messageCount} messages · Updated ${updatedTime}",
+                        "text": "${extraUsage}",
+                        "size": "small",
+                        "isSubtle": true,
+                        "spacing": "none",
+                        "$when": "${extraUsage != ''}"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${resetTime} · Updated ${updatedTime}",
                         "size": "small",
                         "isSubtle": true,
                         "spacing": "large"

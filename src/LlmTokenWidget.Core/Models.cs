@@ -13,7 +13,33 @@ public record TokenBreakdown(
     public long Total => InputTokens + OutputTokens + CacheCreationTokens + CacheReadTokens;
 }
 
-// TokenEntry removed (unused)
+/// <summary>
+/// Rate limit data from a single window (5-hour, 7-day, etc.).
+/// </summary>
+public record RateLimitInfo(
+    double Utilization,
+    DateTimeOffset? ResetsAt);
+
+/// <summary>
+/// Extra/overflow usage info (for Max plans with overage billing).
+/// </summary>
+public record ExtraUsageInfo(
+    bool IsEnabled,
+    double MonthlyLimit,
+    double UsedCredits,
+    double Utilization);
+
+/// <summary>
+/// Full rate-limit snapshot from the OAuth usage API.
+/// </summary>
+public record OAuthUsageData(
+    RateLimitInfo? FiveHour,
+    RateLimitInfo? SevenDay,
+    RateLimitInfo? SevenDayOAuthApps,
+    RateLimitInfo? SevenDayOpus,
+    RateLimitInfo? SevenDaySonnet,
+    ExtraUsageInfo? ExtraUsage,
+    DateTimeOffset FetchedAt);
 
 /// <summary>
 /// Aggregated token usage snapshot from a provider.
@@ -25,9 +51,8 @@ public record UsageSnapshot(
     DateTimeOffset? EarliestMessage,
     DateTimeOffset? LatestMessage,
     DateTimeOffset FetchedAt,
-    StatuslineData? LiveStatus);
-
-// Cooldown and Plan limits removed (unused)
+    StatuslineData? LiveStatus,
+    OAuthUsageData? OAuthUsage);
 
 /// <summary>
 /// Whether a provider has data available.
