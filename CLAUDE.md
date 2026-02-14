@@ -239,7 +239,11 @@ Current implementations:
 ```json
 { "token": "ghp_..." }
 ```
-The token needs `manage_billing:copilot` scope.
+The token needs `user` scope (or `manage_billing:copilot`).
+
+**Primary credential source**: GitHub CLI (`gh auth token`)
+- Provider first attempts to read token via `gh auth token` command
+- Falls back to manual config file if gh CLI unavailable
 
 **API endpoints**:
 - `GET https://api.github.com/user` — fetches authenticated username (cached per session)
@@ -249,13 +253,15 @@ The token needs `manage_billing:copilot` scope.
 ```json
 {
   "usageItems": [
-    { "date": "2026-02-01", "gross_quantity": 5, "sku": "COPILOT_PREMIUM_MODEL_X" }
+    { "date": "2026-02-01", "grossQuantity": 5.0, "sku": "Copilot Premium Request" }
   ]
 }
 ```
 
+**Important**: API returns `grossQuantity` as decimal (e.g., 27.0) in camelCase, not snake_case.
+
 **Mapping to widget**:
-- Sum `gross_quantity` across all items = total premium requests used
+- Sum `grossQuantity` across all items = total premium requests used
 - Quota: hardcoded 300 (Pro plan)
 - Reset: 1st of next month at 00:00 UTC (computed, not from API)
 - Polling: 60 seconds (API-only, no local files)

@@ -93,6 +93,19 @@ C:\Users\kk\Code\llm-token-widget\
 
 3. **.NET 8 SDK** (included with VS 2022)
 
+4. **For GitHub Copilot widget** (optional):
+   - GitHub CLI (`gh`) installed
+   - Authenticated with `user` scope:
+     ```powershell
+     gh auth login
+     gh auth refresh -s user
+     ```
+   - Verify access:
+     ```powershell
+     gh api /user  # Should return your username
+     gh api /users/{your-username}/settings/billing/premium_request/usage
+     ```
+
 ### Current Issue with VS Insiders
 
 ⚠️ **VS Insiders installation is missing required components**:

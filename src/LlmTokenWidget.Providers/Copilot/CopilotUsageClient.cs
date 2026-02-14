@@ -74,11 +74,11 @@ public sealed class CopilotUsageClient : IDisposable
                 return null;
 
             // Sum all premium requests across models/SKUs
-            long totalUsed = 0;
+            double totalUsed = 0;
             foreach (var item in apiResponse.UsageItems)
                 totalUsed += item.GrossQuantity;
 
-            LastTotalUsed = totalUsed;
+            LastTotalUsed = (long)Math.Round(totalUsed);
 
             // Calculate utilization against Pro quota (300/month)
             var utilization = ProQuotaLimit > 0 ? (double)totalUsed / ProQuotaLimit * 100 : 0;
@@ -150,7 +150,8 @@ public sealed class CopilotUsageClient : IDisposable
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
     };
 
     private sealed class ApiBillingResponse
@@ -161,7 +162,7 @@ public sealed class CopilotUsageClient : IDisposable
     private sealed class ApiBillingItem
     {
         public string Date { get; set; } = "";
-        public long GrossQuantity { get; set; }
+        public double GrossQuantity { get; set; }
         public string Sku { get; set; } = "";
     }
 
