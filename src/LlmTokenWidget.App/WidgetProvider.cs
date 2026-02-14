@@ -6,6 +6,7 @@ using Microsoft.Windows.Widgets;
 using Microsoft.Windows.Widgets.Providers;
 using LlmTokenWidget.Core;
 using LlmTokenWidget.Providers.ClaudeCode;
+using LlmTokenWidget.Providers.Copilot;
 using LlmTokenWidget.Providers.Zai;
 
 namespace LlmTokenWidget.App;
@@ -17,6 +18,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 {
     private const string ClaudeWidgetId = "Claude_Usage_Widget";
     private const string ZaiWidgetId = "Zai_Usage_Widget";
+    private const string CopilotWidgetId = "Copilot_Usage_Widget";
 
     private readonly Dictionary<string, WidgetState> _activeWidgets = new();
     private readonly Dictionary<string, ILlmProvider> _providers = new();
@@ -40,6 +42,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var zaiProvider = new ZaiLocalProvider();
         zaiProvider.DataChanged += OnProviderDataChanged;
         _providers[ZaiWidgetId] = zaiProvider;
+
+        _providers[CopilotWidgetId] = new CopilotProvider();
     }
 
     public void CreateWidget(WidgetContext widgetContext)
@@ -186,6 +190,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         return definitionId switch
         {
             ZaiWidgetId => BuildZaiDataJson(usage, size),
+            CopilotWidgetId => BuildCopilotDataJson(usage, size),
             _ => BuildClaudeDataJson(usage, size)
         };
     }
@@ -373,6 +378,59 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         """;
     }
 
+    private string BuildCopilotDataJson(UsageSnapshot usage, WidgetSize size)
+    {
+        var monthly = usage.OAuthUsage?.FiveHour; // Monthly quota stored in FiveHour slot
+        var utilization = monthly?.Utilization ?? 0;
+        var percentText = monthly != null ? $"{utilization:F0}%" : "—%";
+        var percentValue = (int)Math.Round(utilization);
+        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
+        if (monthly == null) percentValueClamped = 0;
+
+        var statusEmoji = utilization switch
+        {
+            > 85 => "🔴",
+            > 60 => "🟡",
+            _ => monthly != null ? "🟢" : "⚪"
+        };
+
+        // Get total used from provider
+        long totalUsed = 0;
+        if (_providers.TryGetValue(CopilotWidgetId, out var provider) && provider is CopilotProvider cp)
+            totalUsed = cp.LastTotalUsed;
+
+        var usageText = $"{totalUsed} / 300 premium requests";
+
+        // Reset countdown
+        var resetText = "";
+        if (monthly?.ResetsAt != null)
+        {
+            var remaining = monthly.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining.TotalSeconds > 0)
+            {
+                if (remaining.TotalDays >= 1)
+                    resetText = $"Resets in {(int)remaining.TotalDays} days";
+                else
+                    resetText = $"Resets in {(int)remaining.TotalHours} hr {remaining.Minutes} min";
+            }
+        }
+
+        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
+
+        return $$"""
+        {
+            "statusEmoji": "{{statusEmoji}}",
+            "percentText": "{{percentText}}",
+            "percentValue": {{percentValue}},
+            "percentValueClamped": {{percentValueClamped}},
+            "percentRemaining": {{percentRemaining}},
+            "usageText": "{{usageText}}",
+            "resetTime": "{{resetText}}",
+            "size": "{{size}}"
+        }
+        """;
+    }
+
     private static string FormatNumber(long number)
     {
         return number switch
@@ -396,6 +454,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 WidgetSize.Medium => ZaiMediumTemplate,
                 WidgetSize.Large => ZaiLargeTemplate,
                 _ => ZaiMediumTemplate
+            },
+            CopilotWidgetId => size switch
+            {
+                WidgetSize.Small => CopilotSmallTemplate,
+                WidgetSize.Medium => CopilotMediumTemplate,
+                WidgetSize.Large => CopilotLargeTemplate,
+                _ => CopilotMediumTemplate
             },
             _ => size switch
             {
@@ -1383,6 +1448,245 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 ]
                             }
                         ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    // 1x1 green (#2EA043) pixel for Copilot progress bar fill
+    private const string GreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC";
+
+    private const string CopilotSmallTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Copilot monthly quota",
+                "weight": "bolder",
+                "size": "small"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            }
+        ]
+    }
+    """;
+
+    private const string CopilotMediumTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Copilot Monthly Quota",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${usageText}",
+                "size": "small",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "6px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    private const string CopilotLargeTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Copilot Monthly Quota",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${usageText}",
+                "size": "small",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "8px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "isSubtle": true
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
                     }
                 ]
             }

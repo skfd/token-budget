@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) and Z.ai/GLM usage from opencode CLI, with extensibility for other providers.
+Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget), Z.ai/GLM usage from opencode CLI, and GitHub Copilot premium request usage, with extensibility for other providers.
 
 **Full architecture plan**: `C:\Users\kk\.claude\plans\joyful-marinating-thunder.md`
 
@@ -22,9 +22,10 @@ Windows 11 Widgets Board widget for displaying LLM token usage, costs, and coold
 ```
 LlmTokenWidget.sln
 ├── src/LlmTokenWidget.Core/         # Interfaces, models, shared services
-├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai providers
+├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai/Copilot providers
 │   ├── ClaudeCode/                  # Claude Code local provider
-│   └── Zai/                         # Z.ai/opencode CLI provider
+│   ├── Zai/                         # Z.ai/opencode CLI provider
+│   └── Copilot/                     # GitHub Copilot API provider
 ├── src/LlmTokenWidget.App/          # COM widget provider executable
 └── packaging/LlmTokenWidget.Package/ # MSIX packaging project
 ```
@@ -65,6 +66,20 @@ msbuild packaging/LlmTokenWidget.Package/LlmTokenWidget.Package.wapproj /p:Confi
 
 Then deploy the resulting MSIX from Visual Studio or via `Add-AppxPackage`.
 
+## When to Redeploy vs Rebuild
+
+| What changed | Action needed |
+|---|---|
+| `Package.appxmanifest` (widget defs, COM registration, display names, sizes) | Full redeploy (`rebuild-deploy.ps1`) |
+| MSIX package identity or capabilities | Full redeploy |
+| Adding/removing projects from the solution | Full redeploy |
+| C# code (providers, cards, widget logic) | Rebuild + kill `LlmTokenWidget.App.exe` (Widget Board relaunches it on demand) |
+| External data files (JSONL, `widget-data.json`, `auth.json`) | Nothing — read at runtime |
+
+**Why `rebuild-deploy.ps1` exists**: Windows aggressively caches widget metadata. Manifest changes (display name, widget IDs) won't appear until `WidgetService` and `WidgetBoard` processes are killed and the package is re-registered. The script handles all of this.
+
+**Shortcut for code-only changes**: `dotnet build LlmTokenWidget.sln` then kill the running exe. No MSIX reinstall needed.
+
 ## Critical Architecture Concepts
 
 ### GUID Synchronization
@@ -96,6 +111,7 @@ public interface ILlmProvider
 Current implementations:
 - **ClaudeCodeLocalProvider**: Reads `~/.claude/widget-data.json` for live session data + OAuth API for rate limits
 - **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage + Z.ai quota API for rate limits
+- **CopilotProvider**: API-only provider fetching premium request usage from GitHub billing API (300/month Pro quota)
 
 ### JSONL Parsing (Claude Code Local Data)
 
@@ -217,6 +233,33 @@ Current implementations:
 - `TOKENS_LIMIT` with `unit=6` → Weekly quota (maps to `OAuthUsageData.SevenDay`)
 - `TIME_LIMIT` → Monthly web search/reader quota (not displayed yet)
 
+### GitHub Copilot Provider (API-Only)
+
+**Credential location**: `~/.config/llm-token-widget/copilot.json`
+```json
+{ "token": "ghp_..." }
+```
+The token needs `manage_billing:copilot` scope.
+
+**API endpoints**:
+- `GET https://api.github.com/user` — fetches authenticated username (cached per session)
+- `GET https://api.github.com/users/{username}/settings/billing/premium_request/usage` — premium request usage
+
+**Usage response** (usageItems array):
+```json
+{
+  "usageItems": [
+    { "date": "2026-02-01", "gross_quantity": 5, "sku": "COPILOT_PREMIUM_MODEL_X" }
+  ]
+}
+```
+
+**Mapping to widget**:
+- Sum `gross_quantity` across all items = total premium requests used
+- Quota: hardcoded 300 (Pro plan)
+- Reset: 1st of next month at 00:00 UTC (computed, not from API)
+- Polling: 60 seconds (API-only, no local files)
+
 ### Cooldown Estimation
 
 **Algorithm**:
@@ -252,6 +295,7 @@ Two widgets registered in `Package.appxmanifest`:
 |-----------|-------------|-------|---------|
 | `Claude_Usage_Widget` | Claude Code Usage v18 | S/M/L | Local token usage + OAuth rate limits |
 | `Zai_Usage_Widget` | Z.ai Usage | S/M/L | GLM/z.ai token usage from opencode CLI |
+| `Copilot_Usage_Widget` | GitHub Copilot Usage | S/M/L | GitHub Copilot premium request usage |
 
 ## Polling Strategy
 
@@ -259,6 +303,7 @@ Two widgets registered in `Package.appxmanifest`:
 |----------|----------|------------------|
 | Claude Code Local | 5s | FileSystemWatcher + timer fallback |
 | Z.ai Local | 5s | FileSystemWatcher + timer fallback |
+| GitHub Copilot | 60s | Timer only (API-only, no local files) |
 
 Polling only runs when widgets are active (Widgets board open).
 
@@ -289,5 +334,8 @@ Polling only runs when widgets are active (Widgets board open).
 - `src/LlmTokenWidget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
 - `src/LlmTokenWidget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
 - `src/LlmTokenWidget.Providers/Zai/ZaiQuotaClient.cs` — Fetches quota/rate-limit data from Z.ai API
+- `src/LlmTokenWidget.Providers/Copilot/CopilotCredentialReader.cs` — Reads GitHub PAT from config file
+- `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs` — Fetches premium request usage from GitHub API
+- `src/LlmTokenWidget.Providers/Copilot/CopilotProvider.cs` — GitHub Copilot provider implementation
 - `packaging/LlmTokenWidget.Package/Package.appxmanifest` — COM + widget registration
 - `rebuild-deploy.ps1` — Full rebuild and deploy script
