@@ -17,9 +17,6 @@ public interface ILlmProvider
     /// <summary>Fetch current token usage snapshot.</summary>
     Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct);
 
-    /// <summary>Estimate cooldown status for rolling window budget.</summary>
-    Task<CooldownEstimate?> EstimateCooldownAsync(CancellationToken ct);
-
     /// <summary>How often the widget should poll for updates.</summary>
     TimeSpan PollingInterval { get; }
 

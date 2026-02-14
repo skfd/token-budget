@@ -146,13 +146,11 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 return;
 
             var usageTask = _provider.FetchUsageAsync(CancellationToken.None);
-            var cooldownTask = _provider.EstimateCooldownAsync(CancellationToken.None);
-            // These are synchronous under the hood (file I/O wrapped in Task.FromResult)
+            // Cooldown estimation removed (Phase 3 cleanup)
             var usage = usageTask.GetAwaiter().GetResult();
-            var cooldown = cooldownTask.GetAwaiter().GetResult();
 
             var templateJson = GetTemplate(state.Size);
-            var dataJson = BuildDataJson(usage, cooldown, state.Size);
+            var dataJson = BuildDataJson(usage, state.Size); // Removed cooldown arg
 
             var updateOptions = new WidgetUpdateRequestOptions(widgetId)
             {
@@ -168,28 +166,18 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         }
     }
 
-    private string BuildDataJson(UsageSnapshot usage, CooldownEstimate? cooldown, WidgetSize size)
+    private string BuildDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var total = usage.TotalTokens;
-        var statusEmoji = cooldown?.Status switch
-        {
-            CooldownStatus.Green => "🟢",
-            CooldownStatus.Yellow => "🟡",
-            CooldownStatus.Red => "🔴",
-            _ => "⚪"
-        };
-
-        var percentText = cooldown != null
-            ? $"{cooldown.PercentUsed * 100:F1}%"
-            : "N/A";
-
-        var resetText = cooldown?.TimeUntilReset != null
-            ? $"{cooldown.TimeUntilReset.Value.Hours}h {cooldown.TimeUntilReset.Value.Minutes}m"
-            : "";
+        
+        // Cooldown/Limit logic temporarily removed
+        var statusEmoji = "⚪"; // Neutral status until web scraper implemented
+        var percentText = "—%"; // Placeholder
+        var resetText = ""; // Placeholder until web scraper
 
         var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
 
-        var planName = _provider.DetectedPlan.Tier.ToString();
+        var planName = "Claude Code"; // Plan detection removed in Phase 3 cleanup
 
         // Extract live status data if available
         var live = usage.LiveStatus;
@@ -201,15 +189,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         {
             "statusEmoji": "{{statusEmoji}}",
             "percentText": "{{percentText}}",
-            "percentValue": {{(cooldown != null ? (int)(cooldown.PercentUsed * 100) : 0)}},
-            "percentValueClamped": {{(cooldown != null ? Math.Min((int)(cooldown.PercentUsed * 100), 100) : 0)}},
+            "percentValue": 0,
+            "percentValueClamped": 0,
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
             "cacheCreation": "{{FormatNumber(total.CacheCreationTokens)}}",
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
-            "tokenLimit": "{{FormatNumber(cooldown?.TokenLimit ?? 0)}}",
-            "windowTokens": "{{FormatNumber(cooldown?.TokensInWindow ?? 0)}}",
+            "tokenLimit": "—",
+            "windowTokens": "—",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
             "updatedTime": "{{updatedTime}}",
