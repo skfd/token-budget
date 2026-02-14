@@ -12,7 +12,9 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
     private readonly JsonlParser _parser;
     private readonly CooldownEstimator _estimator;
     private readonly DetectedPlan _detectedPlan;
+    private readonly StatuslineReader _statusReader;
     private FileSystemWatcher? _watcher;
+    private FileSystemWatcher? _statusWatcher;
     private List<TokenEntry>? _cachedEntries;
     private DateTimeOffset _lastFetch = DateTimeOffset.MinValue;
     private readonly object _lock = new();
@@ -24,7 +26,7 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     public string ProviderId => "claude-code-local";
     public string DisplayName => "Claude Code";
-    public TimeSpan PollingInterval => TimeSpan.FromSeconds(30);
+    public TimeSpan PollingInterval => TimeSpan.FromSeconds(5); // Poll faster for live status
 
     public event EventHandler? DataChanged;
 
@@ -36,6 +38,7 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         _projectsDir = Path.Combine(userProfile, ".claude", "projects");
         _parser = new JsonlParser();
+        _statusReader = new StatuslineReader();
 
         // Load plan from config file
         var config = new WidgetConfig();
@@ -57,14 +60,34 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     public Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
     {
+        // 1. Try reading live status from statusline bridge
+        var liveStatus = _statusReader.Read();
+
+        // 2. Get historical/cumulative data from JSONL
         var entries = GetEntries(ct);
 
-        var totalInput = entries.Sum(e => e.Tokens.InputTokens);
-        var totalOutput = entries.Sum(e => e.Tokens.OutputTokens);
-        var totalCacheCreation = entries.Sum(e => e.Tokens.CacheCreationTokens);
-        var totalCacheRead = entries.Sum(e => e.Tokens.CacheReadTokens);
+        TokenBreakdown totalTokens;
 
-        var totalTokens = new TokenBreakdown(totalInput, totalOutput, totalCacheCreation, totalCacheRead);
+        if (liveStatus != null && liveStatus.TotalInputTokens.HasValue && liveStatus.TotalOutputTokens.HasValue)
+        {
+            // Use live session totals if available
+            // Note: Statusline gives totals but not separate cache breakdown in the 'total_' fields
+            // We can try to use current_usage for cache if we want, but for now let's trust the totals
+            totalTokens = new TokenBreakdown(
+                liveStatus.TotalInputTokens.Value,
+                liveStatus.TotalOutputTokens.Value,
+                liveStatus.CacheCreationTokens ?? 0, 
+                liveStatus.CacheReadTokens ?? 0);
+        }
+        else
+        {
+            // Fallback to summing JSONL files
+            var totalInput = entries.Sum(e => e.Tokens.InputTokens);
+            var totalOutput = entries.Sum(e => e.Tokens.OutputTokens);
+            var totalCacheCreation = entries.Sum(e => e.Tokens.CacheCreationTokens);
+            var totalCacheRead = entries.Sum(e => e.Tokens.CacheReadTokens);
+            totalTokens = new TokenBreakdown(totalInput, totalOutput, totalCacheCreation, totalCacheRead);
+        }
 
         // Count unique sessions by looking at the file paths (uuid groups)
         var sessionCount = entries
@@ -79,7 +102,8 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
             MessageCount: entries.Count,
             EarliestMessage: entries.Count > 0 ? entries.Min(e => e.Timestamp) : null,
             LatestMessage: entries.Count > 0 ? entries.Max(e => e.Timestamp) : null,
-            FetchedAt: DateTimeOffset.UtcNow);
+            FetchedAt: DateTimeOffset.UtcNow,
+            LiveStatus: liveStatus);
 
         return Task.FromResult(snapshot);
     }
@@ -118,26 +142,48 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     private void StartWatching()
     {
-        if (!Directory.Exists(_projectsDir))
-            return;
-
-        try
+        if (Directory.Exists(_projectsDir))
         {
-            _watcher = new FileSystemWatcher(_projectsDir)
+            try
             {
-                Filter = "*.jsonl",
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.FileName
-            };
+                _watcher = new FileSystemWatcher(_projectsDir)
+                {
+                    Filter = "*.jsonl",
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.FileName
+                };
 
-            _watcher.Changed += OnFileChanged;
-            _watcher.Created += OnFileChanged;
-            _watcher.EnableRaisingEvents = true;
+                _watcher.Changed += OnFileChanged;
+                _watcher.Created += OnFileChanged;
+                _watcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FileSystemWatcher (JSONL) failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
+
+        // Watch for statusline updates
+        var statusFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "widget-data.json");
+        var statusDir = Path.GetDirectoryName(statusFile);
+        if (Directory.Exists(statusDir))
         {
-            // If we can't watch, that's OK — polling will still work
-            System.Diagnostics.Debug.WriteLine($"FileSystemWatcher failed: {ex.Message}");
+            try
+            {
+                _statusWatcher = new FileSystemWatcher(statusDir)
+                {
+                    Filter = "widget-data.json",
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime
+                };
+                
+                _statusWatcher.Changed += OnFileChanged;
+                _statusWatcher.Created += OnFileChanged;
+                _statusWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FileSystemWatcher (Status) failed: {ex.Message}");
+            }
         }
     }
 
@@ -145,11 +191,15 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
     {
         // Debounce: reset the timer each time an event fires
         _debounceTimer?.Dispose();
+        
+        // Use shorter debounce for statusline updates (200ms) vs JSONL (2000ms)
+        var delay = e.Name == "widget-data.json" ? 200 : DebounceMilliseconds;
+
         _debounceTimer = new System.Threading.Timer(_ =>
         {
-            InvalidateCache();
+            if (e.Name != "widget-data.json") InvalidateCache(); // Only invalidate JSONL cache for JSONL changes
             DataChanged?.Invoke(this, EventArgs.Empty);
-        }, null, DebounceMilliseconds, Timeout.Infinite);
+        }, null, delay, Timeout.Infinite);
     }
 
     public void Dispose()
@@ -157,6 +207,7 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
         if (_disposed) return;
         _disposed = true;
         _watcher?.Dispose();
+        _statusWatcher?.Dispose();
         _debounceTimer?.Dispose();
     }
 }

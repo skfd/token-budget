@@ -31,7 +31,8 @@ public record UsageSnapshot(
     int MessageCount,
     DateTimeOffset? EarliestMessage,
     DateTimeOffset? LatestMessage,
-    DateTimeOffset FetchedAt);
+    DateTimeOffset FetchedAt,
+    StatuslineData? LiveStatus);
 
 /// <summary>
 /// Cooldown status for a rolling-window token budget.
@@ -94,3 +95,17 @@ public static class PlanLimits
     /// <summary>Max20 plan: ~540M tokens per 5h.</summary>
     public const long Max20 = 540_000_000;
 }
+
+/// <summary>
+/// Data captured from Claude Code's statusline stream.
+/// </summary>
+public record StatuslineData(
+    string? ModelName,
+    double? CostUsd,
+    double? ContextWindowUsedPercent,
+    long? TotalInputTokens,
+    long? TotalOutputTokens,
+    long? CacheCreationTokens,
+    long? CacheReadTokens,
+    DateTimeOffset CapturedAt);
+

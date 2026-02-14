@@ -191,6 +191,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         var planName = _provider.DetectedPlan.Tier.ToString();
 
+        // Extract live status data if available
+        var live = usage.LiveStatus;
+        var costText = live?.CostUsd.HasValue == true ? $"${live.CostUsd.Value:F2}" : "";
+        var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Claude Code";
+        var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
+
         return $$"""
         {
             "statusEmoji": "{{statusEmoji}}",
@@ -208,6 +214,9 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "resetTime": "{{resetText}}",
             "updatedTime": "{{updatedTime}}",
             "planName": "{{planName}}",
+            "cost": "{{costText}}",
+            "model": "{{modelText}}",
+            "context": "{{contextText}}",
             "size": "{{size}}"
         }
         """;
@@ -245,13 +254,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "items": [
                     {
                         "type": "TextBlock",
-                        "text": "${statusEmoji} Claude Code",
+                        "text": "${statusEmoji} ${model}",
                         "weight": "bolder",
                         "size": "medium"
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${windowTokens} / ${tokenLimit} (${planName})",
+                        "text": "${windowTokens} / ${tokenLimit} ${cost}",
                         "size": "small",
                         "spacing": "small"
                     },
@@ -314,7 +323,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "items": [
                                     {
                                         "type": "TextBlock",
-                                        "text": "${statusEmoji} Claude Code Usage",
+                                        "text": "${statusEmoji} ${model}",
                                         "weight": "bolder",
                                         "size": "medium"
                                     }
@@ -478,7 +487,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "items": [
                                     {
                                         "type": "TextBlock",
-                                        "text": "${statusEmoji} Claude Code Usage",
+                                        "text": "${statusEmoji} ${model}",
                                         "weight": "bolder",
                                         "size": "large"
                                     }
@@ -501,7 +510,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                     },
                     {
                         "type": "TextBlock",
-                        "text": "${planName} Plan · Rolling 5-Hour Window",
+                        "text": "${planName} · ${cost} · ${context}",
                         "size": "small",
                         "isSubtle": true,
                         "spacing": "small"
