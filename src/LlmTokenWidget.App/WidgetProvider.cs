@@ -207,6 +207,10 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var sevenDay = oauth?.SevenDay;
         var extra = oauth?.ExtraUsage;
 
+        // Theme detection
+        var isLight = IsLightTheme();
+        var trackUrl = GetTrackUrl(isLight);
+
         // Utilization percentage from 5h window
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
@@ -214,13 +218,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
         if (fiveHour == null) percentValueClamped = 0;
 
-        // Status emoji based on utilization
-        var statusEmoji = utilization switch
-        {
-            > 85 => "🔴",
-            > 60 => "🟡",
-            _ => fiveHour != null ? "🟢" : "⚪"
-        };
+        // Status visuals based on utilization
+        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
 
         // Reset countdown
         var resetText = "";
@@ -248,6 +247,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
+        var (sevenDayBarFillUrl, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null, isLight);
 
         // Extra usage info
         var extraText = "";
@@ -255,8 +255,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         {
             extraText = $"Overage: ${extra.UsedCredits / 100.0:F0}/${extra.MonthlyLimit / 100.0:F0} ({extra.Utilization:F0}%)";
         }
-
-        var updatedTime = DateTimeOffset.Now.ToString("HH:mm:ss");
 
         var planName = "Claude Code";
 
@@ -272,7 +270,9 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "statusEmoji": "{{statusEmoji}}",
+            "barFillUrl": "{{barFillUrl}}",
+            "trackUrl": "{{trackUrl}}",
+            "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "percentValueClamped": {{percentValueClamped}},
@@ -284,6 +284,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
+            "sevenDayBarFillUrl": "{{sevenDayBarFillUrl}}",
+            "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
             "sevenDayValueClamped": {{sevenDayValueClamped}},
@@ -307,6 +309,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var weekly = oauth?.SevenDay;
 
         var providerName = "Z.ai";
+        var isLight = IsLightTheme();
+        var trackUrl = GetTrackUrl(isLight);
 
         // 5-hour utilization
         var utilization = fiveHour?.Utilization ?? 0;
@@ -315,12 +319,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
         if (fiveHour == null) percentValueClamped = 0;
 
-        var statusEmoji = utilization switch
-        {
-            > 85 => "🔴",
-            > 60 => "🟡",
-            _ => fiveHour != null ? "🟢" : "⚪"
-        };
+        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
 
         var resetText = "";
         if (fiveHour?.ResetsAt != null)
@@ -350,16 +349,21 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 weeklyReset = $"Resets {weekly.ResetsAt.Value.LocalDateTime:ddd MMM d, h:mm tt}";
             }
         }
+        var (weeklyBarFillUrl, weeklyStatusColor) = GetStatusVisuals(weekly?.Utilization ?? 0, weekly != null, isLight);
 
         return $$"""
         {
             "providerName": "{{providerName}}",
-            "statusEmoji": "{{statusEmoji}}",
+            "barFillUrl": "{{barFillUrl}}",
+            "trackUrl": "{{trackUrl}}",
+            "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "percentValueClamped": {{percentValueClamped}},
             "percentRemaining": {{percentRemaining}},
             "resetTime": "{{resetText}}",
+            "weeklyBarFillUrl": "{{weeklyBarFillUrl}}",
+            "weeklyStatusColor": "{{weeklyStatusColor}}",
             "weeklyPercent": "{{weeklyPercent}}",
             "weeklyValue": {{weeklyValue}},
             "weeklyValueClamped": {{weeklyValueClamped}},
@@ -383,18 +387,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     private string BuildCopilotDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var monthly = usage.OAuthUsage?.FiveHour; // Monthly quota stored in FiveHour slot
+        var isLight = IsLightTheme();
+        var trackUrl = GetTrackUrl(isLight);
         var utilization = monthly?.Utilization ?? 0;
         var percentText = monthly != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
         var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
         if (monthly == null) percentValueClamped = 0;
 
-        var statusEmoji = utilization switch
-        {
-            > 85 => "🔴",
-            > 60 => "🟡",
-            _ => monthly != null ? "🟢" : "⚪"
-        };
+        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, monthly != null, isLight);
 
         // Get total used from provider
         long totalUsed = 0;
@@ -421,7 +422,9 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "statusEmoji": "{{statusEmoji}}",
+            "barFillUrl": "{{barFillUrl}}",
+            "trackUrl": "{{trackUrl}}",
+            "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "percentValueClamped": {{percentValueClamped}},
@@ -442,6 +445,31 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             >= 1_000 => $"{number / 1_000.0:F1}K",
             _ => number.ToString("N0")
         };
+    }
+
+    private static (string barFillUrl, string statusColor) GetStatusVisuals(double utilization, bool hasData, bool isLight)
+    {
+        if (!hasData) return (GrayPx, "default");
+        return utilization switch
+        {
+            > 85 => (isLight ? LightRedPx : DarkRedPx, "attention"),
+            > 60 => (isLight ? LightAmberPx : DarkAmberPx, "warning"),
+            _ => (isLight ? LightGreenPx : DarkGreenPx, "good")
+        };
+    }
+
+    private static string GetTrackUrl(bool isLight) => isLight ? LightTrackPx : DarkTrackPx;
+
+    private static bool IsLightTheme()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            var val = key?.GetValue("AppsUseLightTheme");
+            return val is int i && i == 1;
+        }
+        catch { return false; }
     }
 
     #region Adaptive Card Templates
@@ -474,10 +502,19 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         };
     }
 
-    // 1x1 blue (#6699FF) pixel for progress bar fill
-    private const string BluePx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
-    // 1x1 dark gray (#3D3D3D) pixel for progress bar track
-    private const string GrayPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==";
+    // Theme-aware 1x1 pixel data URIs for progress bar fills
+    // Dark mode fills (vibrant on dark background)
+    private const string DarkGreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC";
+    private const string DarkAmberPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP485ABAAS6Ad7GojhUAAAAAElFTkSuQmCC";
+    private const string DarkRedPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4P3MJAATXAj1nkey5AAAAAElFTkSuQmCC";
+    private const string DarkTrackPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC";
+    // Light mode fills (darker on light background)
+    private const string LightGreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgr+YHAAE2AJo9iZ6mAAAAAElFTkSuQmCC";
+    private const string LightAmberPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOYG8sAAAKVAPtkH1LLAAAAAElFTkSuQmCC";
+    private const string LightRedPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGM4oi0DAALCAQz815LjAAAAAElFTkSuQmCC";
+    private const string LightTrackPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGN48OABAAVEAqEuYekCAAAAAElFTkSuQmCC";
+    // Gray pixel for "no data" state (same in both themes)
+    private const string GrayPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC";
 
     private const string SmallTemplate = """
     {
@@ -489,7 +526,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "Plan usage limits",
                 "weight": "bolder",
-                "size": "small"
+                "size": "default"
             },
             {
                 "type": "ColumnSet",
@@ -508,20 +545,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -535,7 +572,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -546,6 +584,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             }
@@ -569,13 +608,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "Current session",
                 "weight": "bolder",
-                "size": "small",
+                "size": "default",
                 "spacing": "small"
             },
             {
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -596,20 +636,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -624,7 +664,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -641,27 +682,29 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Weekly limits",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
                         "text": "All models",
-                        "weight": "bolder",
                         "size": "small",
-                        "spacing": "small"
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
                     },
                     {
                         "type": "TextBlock",
                         "text": "${sevenDayReset}",
                         "size": "small",
+                        "weight": "lighter",
                         "isSubtle": true,
                         "spacing": "none"
                     },
@@ -682,20 +725,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                                 "width": "${sevenDayValueClamped}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                                    "url": "${sevenDayBarFillUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             },
                                             {
                                                 "type": "Column",
                                                 "width": "${sevenDayRemaining}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "url": "${trackUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             }
                                         ]
                                     }
@@ -710,7 +753,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "${sevenDayPercent} used",
                                         "size": "small",
-                                        "isSubtle": true
+                                        "weight": "lighter",
+                                        "color": "${sevenDayStatusColor}"
                                     }
                                 ],
                                 "verticalContentAlignment": "center"
@@ -739,13 +783,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "Current session",
                 "weight": "bolder",
-                "size": "small",
+                "size": "default",
                 "spacing": "small"
             },
             {
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -766,20 +811,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -794,7 +839,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -811,27 +857,29 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Weekly limits",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
                         "text": "All models",
-                        "weight": "bolder",
                         "size": "small",
-                        "spacing": "small"
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
                     },
                     {
                         "type": "TextBlock",
                         "text": "${sevenDayReset}",
                         "size": "small",
+                        "weight": "lighter",
                         "isSubtle": true,
                         "spacing": "none"
                     },
@@ -852,20 +900,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                                 "width": "${sevenDayValueClamped}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+                                                    "url": "${sevenDayBarFillUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             },
                                             {
                                                 "type": "Column",
                                                 "width": "${sevenDayRemaining}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "url": "${trackUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             }
                                         ]
                                     }
@@ -880,7 +928,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "${sevenDayPercent} used",
                                         "size": "small",
-                                        "isSubtle": true
+                                        "weight": "lighter",
+                                        "color": "${sevenDayStatusColor}"
                                     }
                                 ],
                                 "verticalContentAlignment": "center"
@@ -891,14 +940,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Token breakdown",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
@@ -913,12 +962,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Input",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${inputTokens}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -931,12 +981,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Output",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${outputTokens}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -949,12 +1000,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Cache W",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheCreation}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -967,12 +1019,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Cache R",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheRead}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -985,8 +1038,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     }
     """;
 
-    // 1x1 teal (#00BCF2) pixel for Z.ai progress bar fill - Windows 11 accent
-    private const string TealPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==";
 
     private const string ZaiSmallTemplate = """
     {
@@ -998,7 +1049,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${providerName} quota",
                 "weight": "bolder",
-                "size": "small"
+                "size": "default"
             },
             {
                 "type": "ColumnSet",
@@ -1017,20 +1068,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1044,7 +1095,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -1055,6 +1107,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             }
@@ -1078,6 +1131,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -1098,20 +1152,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1126,7 +1180,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -1135,20 +1190,21 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Weekly Quota",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
                         "text": "${weeklyReset}",
                         "size": "small",
+                        "weight": "lighter",
                         "isSubtle": true,
                         "spacing": "none"
                     },
@@ -1169,20 +1225,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                                 "width": "${weeklyValueClamped}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                                    "url": "${weeklyBarFillUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             },
                                             {
                                                 "type": "Column",
                                                 "width": "${weeklyRemaining}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "url": "${trackUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             }
                                         ]
                                     }
@@ -1197,7 +1253,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "${weeklyPercent} used",
                                         "size": "small",
-                                        "isSubtle": true
+                                        "weight": "lighter",
+                                        "color": "${weeklyStatusColor}"
                                     }
                                 ],
                                 "verticalContentAlignment": "center"
@@ -1226,6 +1283,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -1246,20 +1304,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1274,7 +1332,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -1283,20 +1342,21 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Weekly Quota",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
                         "text": "${weeklyReset}",
                         "size": "small",
+                        "weight": "lighter",
                         "isSubtle": true,
                         "spacing": "none"
                     },
@@ -1317,20 +1377,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                                 "width": "${weeklyValueClamped}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIAbw0VCQAAAABJRU5ErkJggg==",
+                                                    "url": "${weeklyBarFillUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             },
                                             {
                                                 "type": "Column",
                                                 "width": "${weeklyRemaining}",
                                                 "items": [],
                                                 "backgroundImage": {
-                                                    "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                                    "url": "${trackUrl}",
                                                     "fillMode": "repeatHorizontally"
                                                 },
-                                                "minHeight": "6px"
+                                                "minHeight": "4px"
                                             }
                                         ]
                                     }
@@ -1345,7 +1405,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "${weeklyPercent} used",
                                         "size": "small",
-                                        "isSubtle": true
+                                        "weight": "lighter",
+                                        "color": "${weeklyStatusColor}"
                                     }
                                 ],
                                 "verticalContentAlignment": "center"
@@ -1356,20 +1417,21 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             },
             {
                 "type": "Container",
-                "spacing": "small",
+                "spacing": "default",
                 "separator": true,
                 "items": [
                     {
                         "type": "TextBlock",
                         "text": "Token breakdown",
                         "weight": "bolder",
-                        "size": "small",
+                        "size": "default",
                         "spacing": "small"
                     },
                     {
                         "type": "TextBlock",
                         "text": "${sessionCount} sessions • ${messageCount} messages",
                         "size": "small",
+                        "weight": "lighter",
                         "isSubtle": true,
                         "spacing": "none"
                     },
@@ -1385,12 +1447,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Input",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${inputTokens}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -1403,12 +1466,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Output",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${outputTokens}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -1421,12 +1485,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Cache W",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheWrite}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -1439,12 +1504,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "type": "TextBlock",
                                         "text": "Cache R",
                                         "size": "small",
+                                        "weight": "lighter",
                                         "isSubtle": true
                                     },
                                     {
                                         "type": "TextBlock",
                                         "text": "${cacheRead}",
-                                        "size": "small",
+                                        "size": "default",
                                         "spacing": "none"
                                     }
                                 ]
@@ -1457,8 +1523,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     }
     """;
 
-    // 1x1 green (#2EA043) pixel for Copilot progress bar fill
-    private const string GreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC";
 
     private const string CopilotSmallTemplate = """
     {
@@ -1470,7 +1534,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "Copilot monthly quota",
                 "weight": "bolder",
-                "size": "small"
+                "size": "default"
             },
             {
                 "type": "ColumnSet",
@@ -1489,20 +1553,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1516,7 +1580,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -1527,6 +1592,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             }
@@ -1549,13 +1615,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             {
                 "type": "TextBlock",
                 "text": "${usageText}",
-                "size": "small",
+                "size": "default",
                 "spacing": "small"
             },
             {
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -1576,20 +1643,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "6px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1604,7 +1671,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
@@ -1630,13 +1698,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             {
                 "type": "TextBlock",
                 "text": "${usageText}",
-                "size": "small",
+                "size": "default",
                 "spacing": "small"
             },
             {
                 "type": "TextBlock",
                 "text": "${resetTime}",
                 "size": "small",
+                "weight": "lighter",
                 "isSubtle": true,
                 "spacing": "none"
             },
@@ -1657,20 +1726,20 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "width": "${percentValueClamped}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQW+AMAAIRARK0QUTlAAAAAElFTkSuQmCC",
+                                            "url": "${barFillUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     },
                                     {
                                         "type": "Column",
                                         "width": "${percentRemaining}",
                                         "items": [],
                                         "backgroundImage": {
-                                            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADklEQVR4nGI9c+Y/AwAEVAHJAl2DJQAAAABJRU5ErkJggg==",
+                                            "url": "${trackUrl}",
                                             "fillMode": "repeatHorizontally"
                                         },
-                                        "minHeight": "8px"
+                                        "minHeight": "4px"
                                     }
                                 ]
                             }
@@ -1685,7 +1754,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                 "type": "TextBlock",
                                 "text": "${percentText} used",
                                 "size": "small",
-                                "isSubtle": true
+                                "weight": "lighter",
+                                "color": "${statusColor}"
                             }
                         ],
                         "verticalContentAlignment": "center"
