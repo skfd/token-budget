@@ -7,6 +7,7 @@ using Microsoft.Windows.Widgets.Providers;
 using LlmTokenWidget.Core;
 using LlmTokenWidget.Providers.ClaudeCode;
 using LlmTokenWidget.Providers.Copilot;
+using LlmTokenWidget.Providers.Qwen;
 using LlmTokenWidget.Providers.Zai;
 
 namespace LlmTokenWidget.App;
@@ -19,6 +20,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     private const string ClaudeWidgetId = "Claude_Usage_Widget";
     private const string ZaiWidgetId = "Zai_Usage_Widget";
     private const string CopilotWidgetId = "Copilot_Usage_Widget";
+    private const string QwenWidgetId = "Qwen_Usage_Widget";
 
     private readonly Dictionary<string, WidgetState> _activeWidgets = new();
     private readonly Dictionary<string, ILlmProvider> _providers = new();
@@ -46,6 +48,10 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         _providers[ZaiWidgetId] = zaiProvider;
 
         _providers[CopilotWidgetId] = new CopilotProvider(gateway);
+
+        var qwenProvider = new QwenLocalProvider(gateway);
+        qwenProvider.DataChanged += OnProviderDataChanged;
+        _providers[QwenWidgetId] = qwenProvider;
     }
 
     public void CreateWidget(WidgetContext widgetContext)
@@ -193,6 +199,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         {
             ZaiWidgetId => BuildZaiDataJson(usage, size),
             CopilotWidgetId => BuildCopilotDataJson(usage, size),
+            QwenWidgetId => BuildQwenDataJson(usage, size),
             _ => BuildClaudeDataJson(usage, size)
         };
     }
@@ -262,6 +269,105 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var live = usage.LiveStatus;
         var costText = live?.CostUsd.HasValue == true ? $"${live.CostUsd.Value:F2}" : "";
         var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Claude Code";
+        var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
+
+        // Remaining bar width for progress bar background
+        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
+        var sevenDayRemaining = Math.Max(1, 100 - sevenDayValueClamped);
+
+        return $$"""
+        {
+            "barFillUrl": "{{barFillUrl}}",
+            "trackUrl": "{{trackUrl}}",
+            "statusColor": "{{statusColor}}",
+            "percentText": "{{percentText}}",
+            "percentValue": {{percentValue}},
+            "percentValueClamped": {{percentValueClamped}},
+            "percentRemaining": {{percentRemaining}},
+            "totalTokens": "{{FormatNumber(total.Total)}}",
+            "inputTokens": "{{FormatNumber(total.InputTokens)}}",
+            "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
+            "cacheCreation": "{{FormatNumber(total.CacheCreationTokens)}}",
+            "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
+            "messageCount": "{{usage.MessageCount}}",
+            "resetTime": "{{resetText}}",
+            "sevenDayBarFillUrl": "{{sevenDayBarFillUrl}}",
+            "sevenDayStatusColor": "{{sevenDayStatusColor}}",
+            "sevenDayPercent": "{{sevenDayPercent}}",
+            "sevenDayValue": {{sevenDayValue}},
+            "sevenDayValueClamped": {{sevenDayValueClamped}},
+            "sevenDayRemaining": {{sevenDayRemaining}},
+            "sevenDayReset": "{{sevenDayReset}}",
+            "extraUsage": "{{extraText}}",
+            "planName": "{{planName}}",
+            "cost": "{{costText}}",
+            "model": "{{modelText}}",
+            "context": "{{contextText}}",
+            "size": "{{size}}"
+        }
+        """;
+    }
+
+    private string BuildQwenDataJson(UsageSnapshot usage, WidgetSize size)
+    {
+        var total = usage.TotalTokens;
+        var oauth = usage.OAuthUsage;
+
+        // Primary limit: 5-hour window
+        var fiveHour = oauth?.FiveHour;
+        var sevenDay = oauth?.SevenDay;
+
+        // Theme detection
+        var isLight = IsLightTheme();
+        var trackUrl = GetTrackUrl(isLight);
+
+        // Utilization percentage from 5h window
+        var utilization = fiveHour?.Utilization ?? 0;
+        var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
+        var percentValue = (int)Math.Round(utilization);
+        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
+        if (fiveHour == null) percentValueClamped = 0;
+
+        // Status visuals based on utilization
+        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
+
+        // Reset countdown
+        var resetText = "";
+        if (fiveHour?.ResetsAt != null)
+        {
+            var remaining = fiveHour.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining.TotalSeconds > 0)
+            {
+                resetText = remaining.TotalHours >= 1
+                    ? $"Resets in {(int)remaining.TotalHours} hr {remaining.Minutes} min"
+                    : $"Resets in {remaining.Minutes} min";
+            }
+        }
+
+        // 7-day data (split for template use)
+        var sevenDayPercent = sevenDay != null ? $"{sevenDay.Utilization:F0}%" : "—%";
+        var sevenDayValue = sevenDay != null ? (int)Math.Round(sevenDay.Utilization) : 0;
+        var sevenDayValueClamped = sevenDay != null ? Math.Max(1, Math.Min(100, sevenDayValue)) : 0;
+        var sevenDayReset = "";
+        if (sevenDay?.ResetsAt != null)
+        {
+            var remaining7d = sevenDay.ResetsAt.Value - DateTimeOffset.Now;
+            if (remaining7d.TotalSeconds > 0)
+            {
+                sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
+            }
+        }
+        var (sevenDayBarFillUrl, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null, isLight);
+
+        // No overage info for Qwen
+        var extraText = "";
+
+        var planName = "Qwen";
+
+        // Extract live status data if available
+        var live = usage.LiveStatus;
+        var costText = live?.CostUsd.HasValue == true ? $"${live.CostUsd.Value:F2}" : "";
+        var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Qwen";
         var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
 
         // Remaining bar width for progress bar background
@@ -491,6 +597,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 WidgetSize.Medium => CopilotMediumTemplate,
                 WidgetSize.Large => CopilotLargeTemplate,
                 _ => CopilotMediumTemplate
+            },
+            QwenWidgetId => size switch
+            {
+                WidgetSize.Small => SmallTemplate,
+                WidgetSize.Medium => MediumTemplate,
+                WidgetSize.Large => LargeTemplate,
+                _ => MediumTemplate
             },
             _ => size switch
             {
