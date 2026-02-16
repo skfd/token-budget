@@ -69,7 +69,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "`n✓ Build succeeded!" -ForegroundColor Green
+Write-Host "`nOK Build succeeded!" -ForegroundColor Green
 
 # Deploy if requested
 if ($Deploy) {
@@ -79,7 +79,7 @@ if ($Deploy) {
         Write-Error "Deploy failed with exit code $LASTEXITCODE"
         exit $LASTEXITCODE
     }
-    Write-Host "`n✓ Deploy succeeded!" -ForegroundColor Green
+    Write-Host "`nOK Deploy succeeded!" -ForegroundColor Green
     Write-Host "`nPress Win+W to open Widgets Board and add the widget." -ForegroundColor Yellow
 }
 else {

@@ -42,8 +42,38 @@ if ($lockedProcesses) {
 
 Write-Host ""
 
+# Find MSBuild for package restoration
+$msbuildPaths = @(
+    "C:\Program Files\Microsoft Visual Studio\18\Insiders\MSBuild\Current\Bin\amd64\MSBuild.exe",
+    "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe",
+    "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\amd64\MSBuild.exe",
+    "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\amd64\MSBuild.exe"
+)
+
+$msbuild = $null
+foreach ($path in $msbuildPaths) {
+    if (Test-Path $path) {
+        $msbuild = $path
+        Write-Host "Found MSBuild: $msbuild" -ForegroundColor Green
+        break
+    }
+}
+
+if (-not $msbuild) {
+    Write-Error "MSBuild not found. Please install Visual Studio 2022 with Windows application development workload."
+    exit 1
+}
+
+# Restore packages before building
+Write-Host "`nRestoring NuGet packages..." -ForegroundColor Yellow
+& $msbuild LlmTokenWidget.sln /t:Restore /p:Configuration=Debug /p:Platform=x64 /v:minimal
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Package restore failed with exit code $LASTEXITCODE"
+    exit $LASTEXITCODE
+}
+
 # Build the solution
-Write-Host "Building solution..." -ForegroundColor Yellow
+Write-Host "`nBuilding solution..." -ForegroundColor Yellow
 & $devenv LlmTokenWidget.sln /Build "Debug|x64"
 
 if ($LASTEXITCODE -eq 0) {
