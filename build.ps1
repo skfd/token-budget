@@ -32,6 +32,27 @@ Write-Host "`n=== Building LLM Token Widget ===" -ForegroundColor Cyan
 Write-Host "Configuration: $Configuration" -ForegroundColor Yellow
 Write-Host "Platform: $Platform`n" -ForegroundColor Yellow
 
+# Kill any running instances of the widget app that might lock files
+Write-Host "Checking for running instances of LlmTokenWidget.App..." -ForegroundColor Yellow
+$lockedProcesses = Get-Process | Where-Object { $_.ProcessName -eq "LlmTokenWidget.App" -or $_.ProcessName -eq "LlmTokenWidget" }
+
+if ($lockedProcesses) {
+    foreach ($proc in $lockedProcesses) {
+        Write-Host "  Found process: $($proc.ProcessName) (PID: $($proc.Id))" -ForegroundColor Cyan
+        try {
+            Stop-Process -Id $proc.Id -Force -ErrorAction Stop
+            Write-Host "  Killed process: $($proc.ProcessName) (PID: $($proc.Id))" -ForegroundColor Green
+        } catch {
+            Write-Host "  Failed to kill process: $($proc.ProcessName) (PID: $($proc.Id))" -ForegroundColor Red
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+} else {
+    Write-Host "  No running instances found." -ForegroundColor Green
+}
+
+Write-Host ""
+
 # Restore packages
 Write-Host "Restoring NuGet packages..." -ForegroundColor Cyan
 & $msbuild LlmTokenWidget.sln /t:Restore /p:Configuration=$Configuration /p:Platform=$Platform /v:minimal
