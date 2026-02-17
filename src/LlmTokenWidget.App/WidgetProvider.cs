@@ -359,6 +359,23 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         }
         var (sevenDayBarFillUrl, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null, isLight);
 
+        // Monthly quota
+        var monthly = oauth?.Monthly;
+        var monthlyPercent = monthly != null ? $"{monthly.Utilization:F0}%" : "—%";
+        var monthlyValue = monthly != null ? (int)Math.Round(monthly.Utilization) : 0;
+        var monthlyValueClamped = monthly != null ? Math.Max(1, Math.Min(100, monthlyValue)) : 0;
+        var monthlyRemaining = Math.Max(1, 100 - monthlyValueClamped);
+        var monthlyReset = "";
+        if (monthly?.ResetsAt != null)
+        {
+            var remainingM = monthly.ResetsAt.Value - DateTimeOffset.Now;
+            if (remainingM.TotalSeconds > 0)
+            {
+                monthlyReset = $"Resets {monthly.ResetsAt.Value.LocalDateTime:MMM d}";
+            }
+        }
+        var (monthlyBarFillUrl, monthlyStatusColor) = GetStatusVisuals(monthly?.Utilization ?? 0, monthly != null, isLight);
+
         // No overage info for Qwen
         var extraText = "";
 
@@ -397,6 +414,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "sevenDayValueClamped": {{sevenDayValueClamped}},
             "sevenDayRemaining": {{sevenDayRemaining}},
             "sevenDayReset": "{{sevenDayReset}}",
+            "monthlyBarFillUrl": "{{monthlyBarFillUrl}}",
+            "monthlyStatusColor": "{{monthlyStatusColor}}",
+            "monthlyPercent": "{{monthlyPercent}}",
+            "monthlyValue": {{monthlyValue}},
+            "monthlyValueClamped": {{monthlyValueClamped}},
+            "monthlyRemaining": {{monthlyRemaining}},
+            "monthlyReset": "{{monthlyReset}}",
             "extraUsage": "{{extraText}}",
             "planName": "{{planName}}",
             "cost": "{{costText}}",
@@ -601,9 +625,9 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             QwenWidgetId => size switch
             {
                 WidgetSize.Small => SmallTemplate,
-                WidgetSize.Medium => MediumTemplate,
-                WidgetSize.Large => LargeTemplate,
-                _ => MediumTemplate
+                WidgetSize.Medium => QwenMediumTemplate,
+                WidgetSize.Large => QwenLargeTemplate,
+                _ => QwenMediumTemplate
             },
             _ => size switch
             {
@@ -1043,6 +1067,570 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                                         "size": "small",
                                         "weight": "lighter",
                                         "color": "${sevenDayStatusColor}"
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "default",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Token breakdown",
+                        "weight": "bolder",
+                        "size": "default",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Input",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${inputTokens}",
+                                        "size": "default",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Output",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${outputTokens}",
+                                        "size": "default",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Cache W",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${cacheCreation}",
+                                        "size": "default",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "Cache R",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "isSubtle": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${cacheRead}",
+                                        "size": "default",
+                                        "spacing": "none"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    private const string QwenMediumTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Plan usage limits",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Current session",
+                "weight": "bolder",
+                "size": "default",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "weight": "lighter",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "${barFillUrl}",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "4px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "${trackUrl}",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "4px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "weight": "lighter",
+                                "color": "${statusColor}"
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "default",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Weekly limits",
+                        "weight": "bolder",
+                        "size": "default",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${sevenDayReset}",
+                        "size": "small",
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${sevenDayBarFillUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${trackUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${sevenDayPercent} used",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "color": "${sevenDayStatusColor}"
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "default",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Monthly limits",
+                        "weight": "bolder",
+                        "size": "default",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${monthlyReset}",
+                        "size": "small",
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${monthlyValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${monthlyBarFillUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${monthlyRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${trackUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${monthlyPercent} used",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "color": "${monthlyStatusColor}"
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    """;
+
+    private const string QwenLargeTemplate = """
+    {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": "Plan usage limits",
+                "weight": "bolder",
+                "size": "medium"
+            },
+            {
+                "type": "TextBlock",
+                "text": "Current session",
+                "weight": "bolder",
+                "size": "default",
+                "spacing": "small"
+            },
+            {
+                "type": "TextBlock",
+                "text": "${resetTime}",
+                "size": "small",
+                "weight": "lighter",
+                "isSubtle": true,
+                "spacing": "none"
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "spacing": "none",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentValueClamped}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "${barFillUrl}",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "4px"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "width": "${percentRemaining}",
+                                        "items": [],
+                                        "backgroundImage": {
+                                            "url": "${trackUrl}",
+                                            "fillMode": "repeatHorizontally"
+                                        },
+                                        "minHeight": "4px"
+                                    }
+                                ]
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    },
+                    {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "${percentText} used",
+                                "size": "small",
+                                "weight": "lighter",
+                                "color": "${statusColor}"
+                            }
+                        ],
+                        "verticalContentAlignment": "center"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "default",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Weekly limits",
+                        "weight": "bolder",
+                        "size": "default",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${sevenDayReset}",
+                        "size": "small",
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${sevenDayBarFillUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${sevenDayRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${trackUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${sevenDayPercent} used",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "color": "${sevenDayStatusColor}"
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "default",
+                "separator": true,
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "text": "Monthly limits",
+                        "weight": "bolder",
+                        "size": "default",
+                        "spacing": "small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "${monthlyReset}",
+                        "size": "small",
+                        "weight": "lighter",
+                        "isSubtle": true,
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "width": "stretch",
+                                "items": [
+                                    {
+                                        "type": "ColumnSet",
+                                        "spacing": "none",
+                                        "columns": [
+                                            {
+                                                "type": "Column",
+                                                "width": "${monthlyValueClamped}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${monthlyBarFillUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            },
+                                            {
+                                                "type": "Column",
+                                                "width": "${monthlyRemaining}",
+                                                "items": [],
+                                                "backgroundImage": {
+                                                    "url": "${trackUrl}",
+                                                    "fillMode": "repeatHorizontally"
+                                                },
+                                                "minHeight": "4px"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "verticalContentAlignment": "center"
+                            },
+                            {
+                                "type": "Column",
+                                "width": "auto",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "text": "${monthlyPercent} used",
+                                        "size": "small",
+                                        "weight": "lighter",
+                                        "color": "${monthlyStatusColor}"
                                     }
                                 ],
                                 "verticalContentAlignment": "center"

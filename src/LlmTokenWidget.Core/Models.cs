@@ -39,7 +39,8 @@ public record OAuthUsageData(
     RateLimitInfo? SevenDayOpus,
     RateLimitInfo? SevenDaySonnet,
     ExtraUsageInfo? ExtraUsage,
-    DateTimeOffset FetchedAt);
+    DateTimeOffset FetchedAt,
+    RateLimitInfo? Monthly = null);
 
 /// <summary>
 /// Aggregated token usage snapshot from a provider.
