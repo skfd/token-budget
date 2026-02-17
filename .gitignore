@@ -86,3 +86,8 @@ $RECYCLE.BIN/
 *.temp
 *.log
 *.stackdump
+
+# Build cache
+*.assets.cache
+
+.*
