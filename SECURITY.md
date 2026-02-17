@@ -4,14 +4,14 @@ How the LLM Token Widget handles credentials and data access for each provider.
 
 ## Provider Comparison
 
-| | Claude Code | Z.ai | GitHub Copilot |
-|---|---|---|---|
-| **Credential source** | `~/.claude/.credentials.json` (auto) | `~/.local/share/opencode/auth.json` (auto) | `gh auth token` or manual config |
-| **Manual setup needed** | No | No | Only if `gh` CLI not installed |
-| **API endpoints called** | `api.anthropic.com/api/oauth/usage` | `api.z.ai/api/monitor/usage/quota/limit` | `api.github.com/user`, `api.github.com/users/{user}/settings/billing/premium_request/usage` |
-| **Local files read** | `~/.claude/widget-data.json` | `~/.local/share/opencode/storage/message/**/*.json` | None |
-| **Token refresh** | No (see limitations) | No | No |
-| **Graceful degradation** | Shows disk-cached data with simulated resets | Widget shows "no data" | Widget shows "no data" |
+| | Claude Code | Z.ai | GitHub Copilot | Qwen Code |
+|---|---|---|---|---|
+| **Credential source** | `~/.claude/.credentials.json` (auto) | `~/.local/share/opencode/auth.json` (auto) | `gh auth token` or manual config | None (local-only) |
+| **Manual setup needed** | No | No | Only if `gh` CLI not installed | No |
+| **API endpoints called** | `api.anthropic.com/api/oauth/usage` | `api.z.ai/api/monitor/usage/quota/limit` | `api.github.com/user`, `api.github.com/users/{user}/settings/billing/premium_request/usage` | None |
+| **Local files read** | `~/.claude/widget-data.json` | `~/.local/share/opencode/storage/message/**/*.json` | None | `~/.qwen/projects/*/chats/*.jsonl` |
+| **Token refresh** | No (see limitations) | No | No | N/A |
+| **Graceful degradation** | Shows disk-cached data with simulated resets | Widget shows "no data" | Widget shows "no data" | Widget shows "no data" if no JSONL files found |
 
 ## Claude Code
 
@@ -120,6 +120,41 @@ If no token is found (neither `gh` CLI nor config file), or the token lacks the 
 - **API cache.** Successful API responses are cached for 30 seconds.
 - **Quota is hardcoded.** The Pro plan limit of 300 premium requests/month is hardcoded. Other plan tiers are not yet supported.
 
+## Qwen Code
+
+### Credentials
+
+None. The Qwen Code provider is entirely local — it reads JSONL session files from disk and makes no API calls.
+
+### Data accessed
+
+| What | Path / URL | Purpose |
+|---|---|---|
+| Session files | `%USERPROFILE%\.qwen\projects\<project>\chats\<session>.jsonl` | Token counts per assistant message (input, output, cache, reasoning) |
+
+### Required permissions
+
+None. The widget only reads files created by Qwen Code CLI.
+
+### Quota estimation
+
+There is no DashScope API for Coding Plan quota. The widget estimates rate-limit utilization by counting assistant messages in rolling time windows:
+
+| Window | Limit | Reset |
+|---|---|---|
+| 5-hour rolling | 1,200 requests | Oldest request exits window |
+| Weekly | 9,000 requests | Monday 00:00 UTC+8 |
+| Monthly | 18,000 requests | 1st of month 00:00 UTC+8 |
+
+### When data is unavailable
+
+If no JSONL files exist under `~/.qwen/projects/`, the widget shows no data. There is no fallback — the widget remains empty until Qwen Code creates session files.
+
+### Limitations
+
+- **No API verification.** Quota limits are hardcoded estimates for the Coding Plan Lite tier. Actual server-side limits may differ.
+- **Request counting only.** Quota utilization is based on message count, not token count, since that is what the plan limits appear to gate on.
+
 ## Network Access Architecture
 
 All outbound HTTP requests are funneled through a single class: `HttpGateway` (`src/LlmTokenWidget.Core/HttpGateway.cs`). No other code in the project creates `HttpClient` instances or sends HTTP requests directly.
@@ -132,6 +167,8 @@ The gateway maintains a hardcoded allowlist of exactly 4 endpoints:
 | `ZaiQuotaLimit` | `https://api.z.ai/api/monitor/usage/quota/limit` |
 | `GitHubUser` | `https://api.github.com/user` |
 | `GitHubCopilotUsage` | `https://api.github.com/users/{user}/settings/billing/premium_request/usage` |
+
+The Qwen Code provider makes no network requests — it is entirely local.
 
 Adding a new endpoint requires adding to the `ApiEndpoint` enum and the URL dictionary in `HttpGateway.cs`. This makes it easy to audit all network access in a single file.
 

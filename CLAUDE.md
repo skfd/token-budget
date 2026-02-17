@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget), Z.ai/GLM usage from opencode CLI, and GitHub Copilot premium request usage, with extensibility for other providers.
+Windows 11 Widgets Board widget for displaying LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget), Z.ai/GLM usage from opencode CLI, GitHub Copilot premium request usage, and Qwen Code local token usage, with extensibility for other providers.
 
 **Full architecture plan**: `C:\Users\kk\.claude\plans\joyful-marinating-thunder.md`
 
@@ -22,10 +22,11 @@ Windows 11 Widgets Board widget for displaying LLM token usage, costs, and coold
 ```
 LlmTokenWidget.sln
 ├── src/LlmTokenWidget.Core/         # Interfaces, models, shared services
-├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai/Copilot providers
+├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai/Copilot/Qwen providers
 │   ├── ClaudeCode/                  # Claude Code local provider
 │   ├── Zai/                         # Z.ai/opencode CLI provider
-│   └── Copilot/                     # GitHub Copilot API provider
+│   ├── Copilot/                     # GitHub Copilot API provider
+│   └── Qwen/                        # Qwen Code local provider
 ├── src/LlmTokenWidget.App/          # COM widget provider executable
 └── packaging/LlmTokenWidget.Package/ # MSIX packaging project
 ```
@@ -90,7 +91,7 @@ Then deploy the resulting MSIX from Visual Studio or via `Add-AppxPackage`.
 2. `CLSID_WidgetProvider` constant in `Program.cs`
 3. `<com:Class Id="...">` and `<CreateInstance ClassId="...">` in `Package.appxmanifest`
 
-Widget Definition IDs (`Claude_Usage_Widget`, `Zai_Usage_Widget`) must also match between manifest and provider lookups in `WidgetProvider.cs`.
+Widget Definition IDs (`Claude_Usage_Widget`, `Zai_Usage_Widget`, `Qwen_Usage_Widget`) must also match between manifest and provider lookups in `WidgetProvider.cs`.
 
 ### Provider Pattern
 
@@ -112,6 +113,7 @@ Current implementations:
 - **ClaudeCodeLocalProvider**: Reads `~/.claude/widget-data.json` for live session data + OAuth API for rate limits
 - **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage + Z.ai quota API for rate limits
 - **CopilotProvider**: API-only provider fetching premium request usage from GitHub billing API (300/month Pro quota)
+- **QwenLocalProvider**: Parses `~/.qwen/projects/*/chats/*.jsonl` for token usage + client-side request counting for quota estimation
 
 ### JSONL Parsing (Claude Code Local Data)
 
@@ -266,6 +268,40 @@ The token needs `user` scope (or `manage_billing:copilot`).
 - Reset: 1st of next month at 00:00 UTC (computed, not from API)
 - Polling: 60 seconds (API-only, no local files)
 
+### Qwen Code Provider (Local Data)
+
+**File locations**:
+- Sessions: `%USERPROFILE%\.qwen\projects\<project>\chats\<session>.jsonl`
+
+**Format** (each line is a JSON object):
+```json
+{
+  "type": "assistant",
+  "timestamp": "2026-02-10T08:18:13.336Z",
+  "usageMetadata": {
+    "promptTokenCount": 1000,
+    "candidatesTokenCount": 250,
+    "cachedContentTokenCount": 500,
+    "thoughtsTokenCount": 100
+  }
+}
+```
+
+**Parser requirements**:
+- Filter for `type == "assistant"` entries only
+- Sum `usageMetadata` fields: `promptTokenCount` (input), `candidatesTokenCount` (output), `cachedContentTokenCount` (cache read), `thoughtsTokenCount` (reasoning)
+- Parse ISO 8601 timestamps for quota estimation
+
+**Quota estimation** (client-side request counting, no API available):
+
+| Window | Limit | Reset |
+|--------|-------|-------|
+| 5-hour rolling | 1,200 requests | Rolling (oldest request exits window) |
+| Weekly | 9,000 requests | Monday 00:00 UTC+8 |
+| Monthly | 18,000 requests | 1st of month 00:00 UTC+8 |
+
+**Note**: No centralized DashScope usage API exists for Coding Plan quotas. All rate limit estimation is done locally by counting assistant messages in time windows.
+
 ### Cooldown Estimation
 
 **Algorithm**:
@@ -295,13 +331,14 @@ API keys stored in `Windows.Security.Credentials.PasswordVault`:
 
 ## Widget Definitions
 
-Two widgets registered in `Package.appxmanifest`:
+Four widgets registered in `Package.appxmanifest`:
 
 | Widget ID | Display Name | Sizes | Purpose |
 |-----------|-------------|-------|---------|
 | `Claude_Usage_Widget` | Claude Code Usage v18 | S/M/L | Local token usage + OAuth rate limits |
 | `Zai_Usage_Widget` | Z.ai Usage | S/M/L | GLM/z.ai token usage from opencode CLI |
 | `Copilot_Usage_Widget` | GitHub Copilot Usage | S/M/L | GitHub Copilot premium request usage |
+| `Qwen_Usage_Widget` | Qwen Usage v29 | S/M/L | Qwen Code local token usage + request counting quota |
 
 ## Polling Strategy
 
@@ -310,6 +347,7 @@ Two widgets registered in `Package.appxmanifest`:
 | Claude Code Local | 5s | FileSystemWatcher + timer fallback |
 | Z.ai Local | 5s | FileSystemWatcher + timer fallback |
 | GitHub Copilot | 60s | Timer only (API-only, no local files) |
+| Qwen Code Local | 5s | FileSystemWatcher + timer fallback |
 
 Polling only runs when widgets are active (Widgets board open).
 
@@ -343,5 +381,8 @@ Polling only runs when widgets are active (Widgets board open).
 - `src/LlmTokenWidget.Providers/Copilot/CopilotCredentialReader.cs` — Reads GitHub PAT from config file
 - `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs` — Fetches premium request usage from GitHub API
 - `src/LlmTokenWidget.Providers/Copilot/CopilotProvider.cs` — GitHub Copilot provider implementation
+- `src/LlmTokenWidget.Providers/Qwen/JsonlParser.cs` — Parses Qwen Code JSONL session files
+- `src/LlmTokenWidget.Providers/Qwen/QwenLocalProvider.cs` — Qwen Code provider implementation
+- `src/LlmTokenWidget.Providers/Qwen/UsageClient.cs` — Client-side request counting for quota estimation
 - `packaging/LlmTokenWidget.Package/Package.appxmanifest` — COM + widget registration
 - `rebuild-deploy.ps1` — Full rebuild and deploy script
