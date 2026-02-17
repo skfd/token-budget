@@ -8,14 +8,14 @@ namespace LlmTokenWidget.Providers.Qwen;
 
 /// <summary>
 /// Qwen local provider.
-/// Provides placeholder usage data similar to Claude Code widget.
+/// Parses JSONL session files and counts requests for rate limit estimation.
 /// </summary>
 public sealed class QwenLocalProvider : ILlmProvider, IDisposable
 {
-    private readonly StatuslineReader _statusReader;
+    private readonly JsonlParser _parser;
     private readonly UsageClient _usageClient;
 
-    private FileSystemWatcher? _statusWatcher;
+    private FileSystemWatcher? _watcher;
     private bool _disposed;
 
     // Debounce FileSystemWatcher events
@@ -29,8 +29,8 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
 
     public QwenLocalProvider(HttpGateway gateway)
     {
-        _statusReader = new StatuslineReader();
-        _usageClient = new UsageClient(gateway);
+        _parser = new JsonlParser();
+        _usageClient = new UsageClient();
 
         StartWatching();
     }
@@ -38,7 +38,7 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
     public Task<ProviderAvailability> CheckAvailabilityAsync()
     {
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var qwenDir = Path.Combine(userProfile, ".qwen");
+        var qwenDir = Path.Combine(userProfile, ".qwen", "projects");
         var exists = Directory.Exists(qwenDir);
         return Task.FromResult(new ProviderAvailability(
             exists,
@@ -47,35 +47,24 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
 
     public async Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
     {
-        // Read live status from statusline bridge
-        var liveStatus = _statusReader.Read();
+        var usage = _parser.ParseAllSessions();
 
-        TokenBreakdown totalTokens;
+        var totalTokens = new TokenBreakdown(
+            InputTokens: usage.TotalInput,
+            OutputTokens: usage.TotalOutput,
+            CacheCreationTokens: usage.TotalReasoning,
+            CacheReadTokens: usage.TotalCacheRead);
 
-        if (liveStatus != null && liveStatus.TotalInputTokens.HasValue && liveStatus.TotalOutputTokens.HasValue)
-        {
-            totalTokens = new TokenBreakdown(
-                liveStatus.TotalInputTokens.Value,
-                liveStatus.TotalOutputTokens.Value,
-                liveStatus.CacheCreationTokens ?? 0,
-                liveStatus.CacheReadTokens ?? 0);
-        }
-        else
-        {
-            totalTokens = new TokenBreakdown(0, 0, 0, 0);
-        }
-
-        // Fetch rate-limit data from API
-        var oauthUsage = await _usageClient.FetchAsync(ct);
+        var oauthUsage = await _usageClient.FetchAsync(usage.MessageTimestamps, ct);
 
         var snapshot = new UsageSnapshot(
             TotalTokens: totalTokens,
-            SessionCount: 0,
-            MessageCount: 0,
-            EarliestMessage: null,
-            LatestMessage: liveStatus?.CapturedAt,
+            SessionCount: usage.SessionCount,
+            MessageCount: usage.MessageCount,
+            EarliestMessage: usage.EarliestMessage,
+            LatestMessage: usage.LatestMessage,
             FetchedAt: DateTimeOffset.UtcNow,
-            LiveStatus: liveStatus,
+            LiveStatus: null,
             OAuthUsage: oauthUsage);
 
         return snapshot;
@@ -83,32 +72,35 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
 
     private void StartWatching()
     {
-        // Watch for statusline updates only
-        var statusFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qwen", "widget-data.json");
-        var statusDir = Path.GetDirectoryName(statusFile);
-        if (Directory.Exists(statusDir))
-        {
-            try
-            {
-                _statusWatcher = new FileSystemWatcher(statusDir)
-                {
-                    Filter = "widget-data.json",
-                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime
-                };
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var projectsPath = Path.Combine(userProfile, ".qwen", "projects");
 
-                _statusWatcher.Changed += OnFileChanged;
-                _statusWatcher.Created += OnFileChanged;
-                _statusWatcher.EnableRaisingEvents = true;
-            }
-            catch (Exception ex)
+        if (!Directory.Exists(projectsPath))
+            return;
+
+        try
+        {
+            _watcher = new FileSystemWatcher(projectsPath)
             {
-                System.Diagnostics.Debug.WriteLine($"FileSystemWatcher (Status) failed: {ex.Message}");
-            }
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.FileName
+            };
+
+            _watcher.Changed += OnFileChanged;
+            _watcher.Created += OnFileChanged;
+            _watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"FileSystemWatcher failed: {ex.Message}");
         }
     }
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
+        if (!e.FullPath.EndsWith(".jsonl", StringComparison.OrdinalIgnoreCase))
+            return;
+
         _debounceTimer?.Dispose();
         _debounceTimer = new System.Threading.Timer(_ =>
         {
@@ -120,7 +112,7 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _statusWatcher?.Dispose();
+        _watcher?.Dispose();
         _debounceTimer?.Dispose();
     }
 }
