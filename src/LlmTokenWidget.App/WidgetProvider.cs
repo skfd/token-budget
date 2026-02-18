@@ -214,10 +214,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var sevenDay = oauth?.SevenDay;
         var extra = oauth?.ExtraUsage;
 
-        // Theme detection
-        var isLight = IsLightTheme();
-        var trackUrl = GetTrackUrl(isLight);
-
         // Utilization percentage from 5h window
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
@@ -226,7 +222,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         if (fiveHour == null) percentValueClamped = 0;
 
         // Status visuals based on utilization
-        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
+        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         // Reset countdown
         var resetText = "";
@@ -254,7 +250,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
-        var (sevenDayBarFillUrl, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null, isLight);
+        var (sevenDayBarStyle, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
 
         // Extra usage info
         var extraText = "";
@@ -277,8 +273,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barFillUrl": "{{barFillUrl}}",
-            "trackUrl": "{{trackUrl}}",
+            "barStyle": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -291,7 +286,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarFillUrl": "{{sevenDayBarFillUrl}}",
+            "sevenDayBarStyle": "{{sevenDayBarStyle}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
@@ -317,10 +312,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var fiveHour = oauth?.FiveHour;
         var sevenDay = oauth?.SevenDay;
 
-        // Theme detection
-        var isLight = IsLightTheme();
-        var trackUrl = GetTrackUrl(isLight);
-
         // Utilization percentage from 5h window
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
@@ -329,7 +320,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         if (fiveHour == null) percentValueClamped = 0;
 
         // Status visuals based on utilization
-        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
+        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         // Reset countdown
         var resetText = "";
@@ -357,7 +348,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
-        var (sevenDayBarFillUrl, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null, isLight);
+        var (sevenDayBarStyle, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
 
         // Monthly quota
         var monthly = oauth?.Monthly;
@@ -374,7 +365,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 monthlyReset = $"Resets {monthly.ResetsAt.Value.LocalDateTime:MMM d}";
             }
         }
-        var (monthlyBarFillUrl, monthlyStatusColor) = GetStatusVisuals(monthly?.Utilization ?? 0, monthly != null, isLight);
+        var (monthlyBarStyle, monthlyStatusColor) = GetStatusVisuals(monthly?.Utilization ?? 0, monthly != null);
 
         // No overage info for Qwen
         var extraText = "";
@@ -393,8 +384,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barFillUrl": "{{barFillUrl}}",
-            "trackUrl": "{{trackUrl}}",
+            "barStyle": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -407,14 +397,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarFillUrl": "{{sevenDayBarFillUrl}}",
+            "sevenDayBarStyle": "{{sevenDayBarStyle}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
             "sevenDayValueClamped": {{sevenDayValueClamped}},
             "sevenDayRemaining": {{sevenDayRemaining}},
             "sevenDayReset": "{{sevenDayReset}}",
-            "monthlyBarFillUrl": "{{monthlyBarFillUrl}}",
+            "monthlyBarStyle": "{{monthlyBarStyle}}",
             "monthlyStatusColor": "{{monthlyStatusColor}}",
             "monthlyPercent": "{{monthlyPercent}}",
             "monthlyValue": {{monthlyValue}},
@@ -439,8 +429,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var weekly = oauth?.SevenDay;
 
         var providerName = "Z.ai";
-        var isLight = IsLightTheme();
-        var trackUrl = GetTrackUrl(isLight);
 
         // 5-hour utilization
         var utilization = fiveHour?.Utilization ?? 0;
@@ -449,7 +437,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
         if (fiveHour == null) percentValueClamped = 0;
 
-        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, fiveHour != null, isLight);
+        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         var resetText = "";
         if (fiveHour?.ResetsAt != null)
@@ -479,20 +467,19 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 weeklyReset = $"Resets {weekly.ResetsAt.Value.LocalDateTime:ddd MMM d, h:mm tt}";
             }
         }
-        var (weeklyBarFillUrl, weeklyStatusColor) = GetStatusVisuals(weekly?.Utilization ?? 0, weekly != null, isLight);
+        var (weeklyBarStyle, weeklyStatusColor) = GetStatusVisuals(weekly?.Utilization ?? 0, weekly != null);
 
         return $$"""
         {
             "providerName": "{{providerName}}",
-            "barFillUrl": "{{barFillUrl}}",
-            "trackUrl": "{{trackUrl}}",
+            "barStyle": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "percentValueClamped": {{percentValueClamped}},
             "percentRemaining": {{percentRemaining}},
             "resetTime": "{{resetText}}",
-            "weeklyBarFillUrl": "{{weeklyBarFillUrl}}",
+            "weeklyBarStyle": "{{weeklyBarStyle}}",
             "weeklyStatusColor": "{{weeklyStatusColor}}",
             "weeklyPercent": "{{weeklyPercent}}",
             "weeklyValue": {{weeklyValue}},
@@ -517,15 +504,13 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     private string BuildCopilotDataJson(UsageSnapshot usage, WidgetSize size)
     {
         var monthly = usage.OAuthUsage?.FiveHour; // Monthly quota stored in FiveHour slot
-        var isLight = IsLightTheme();
-        var trackUrl = GetTrackUrl(isLight);
         var utilization = monthly?.Utilization ?? 0;
         var percentText = monthly != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
         var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
         if (monthly == null) percentValueClamped = 0;
 
-        var (barFillUrl, statusColor) = GetStatusVisuals(utilization, monthly != null, isLight);
+        var (barStyle, statusColor) = GetStatusVisuals(utilization, monthly != null);
 
         // Get total used from provider
         long totalUsed = 0;
@@ -552,8 +537,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barFillUrl": "{{barFillUrl}}",
-            "trackUrl": "{{trackUrl}}",
+            "barStyle": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -577,29 +561,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         };
     }
 
-    private static (string barFillUrl, string statusColor) GetStatusVisuals(double utilization, bool hasData, bool isLight)
+    private static (string barStyle, string statusColor) GetStatusVisuals(double utilization, bool hasData)
     {
-        if (!hasData) return (GrayPx, "default");
+        if (!hasData) return ("emphasis", "default");
         return utilization switch
         {
-            > 85 => (isLight ? LightRedPx : DarkRedPx, "attention"),
-            > 60 => (isLight ? LightAmberPx : DarkAmberPx, "warning"),
-            _ => (isLight ? LightGreenPx : DarkGreenPx, "good")
+            > 80 => ("attention", "attention"),
+            > 60 => ("warning", "warning"),
+            _ => ("accent", "accent")
         };
-    }
-
-    private static string GetTrackUrl(bool isLight) => isLight ? LightTrackPx : DarkTrackPx;
-
-    private static bool IsLightTheme()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var val = key?.GetValue("AppsUseLightTheme");
-            return val is int i && i == 1;
-        }
-        catch { return false; }
     }
 
     #region Adaptive Card Templates
@@ -640,20 +610,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return AdaptiveCardTemplateLoader.LoadTemplate(templateName);
     }
-
-    // Theme-aware 1x1 pixel data URIs for progress bar fills
-    // Dark mode fills (vibrant on dark background)
-    private const string DarkGreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC";
-    private const string DarkAmberPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP485ABAAS6Ad7GojhUAAAAAElFTkSuQmCC";
-    private const string DarkRedPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4P3MJAATXAj1nkey5AAAAAElFTkSuQmCC";
-    private const string DarkTrackPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC";
-    // Light mode fills (darker on light background)
-    private const string LightGreenPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgr+YHAAE2AJo9iZ6mAAAAAElFTkSuQmCC";
-    private const string LightAmberPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOYG8sAAAKVAPtkH1LLAAAAAElFTkSuQmCC";
-    private const string LightRedPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGM4oi0DAALCAQz815LjAAAAAElFTkSuQmCC";
-    private const string LightTrackPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGN48OABAAVEAqEuYekCAAAAAElFTkSuQmCC";
-    // Gray pixel for "no data" state (same in both themes)
-    private const string GrayPx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC";
 
     #endregion
 }
