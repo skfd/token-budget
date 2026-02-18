@@ -218,8 +218,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
-        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
-        if (fiveHour == null) percentValueClamped = 0;
 
         // Status visuals based on utilization
         var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
@@ -240,7 +238,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         // 7-day data (split for template use)
         var sevenDayPercent = sevenDay != null ? $"{sevenDay.Utilization:F0}%" : "—%";
         var sevenDayValue = sevenDay != null ? (int)Math.Round(sevenDay.Utilization) : 0;
-        var sevenDayValueClamped = sevenDay != null ? Math.Max(1, Math.Min(100, sevenDayValue)) : 0;
         var sevenDayReset = "";
         if (sevenDay?.ResetsAt != null)
         {
@@ -267,18 +264,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Claude Code";
         var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
 
-        // Remaining bar width for progress bar background
-        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
-        var sevenDayRemaining = Math.Max(1, 100 - sevenDayValueClamped);
-
         return $$"""
         {
-            "barStyle": "{{barStyle}}",
+            "barColor": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
-            "percentValueClamped": {{percentValueClamped}},
-            "percentRemaining": {{percentRemaining}},
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
@@ -286,12 +277,10 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarStyle": "{{sevenDayBarStyle}}",
+            "sevenDayBarColor": "{{sevenDayBarStyle}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
-            "sevenDayValueClamped": {{sevenDayValueClamped}},
-            "sevenDayRemaining": {{sevenDayRemaining}},
             "sevenDayReset": "{{sevenDayReset}}",
             "extraUsage": "{{extraText}}",
             "planName": "{{planName}}",
@@ -316,8 +305,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
-        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
-        if (fiveHour == null) percentValueClamped = 0;
 
         // Status visuals based on utilization
         var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
@@ -338,7 +325,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         // 7-day data (split for template use)
         var sevenDayPercent = sevenDay != null ? $"{sevenDay.Utilization:F0}%" : "—%";
         var sevenDayValue = sevenDay != null ? (int)Math.Round(sevenDay.Utilization) : 0;
-        var sevenDayValueClamped = sevenDay != null ? Math.Max(1, Math.Min(100, sevenDayValue)) : 0;
         var sevenDayReset = "";
         if (sevenDay?.ResetsAt != null)
         {
@@ -354,8 +340,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var monthly = oauth?.Monthly;
         var monthlyPercent = monthly != null ? $"{monthly.Utilization:F0}%" : "—%";
         var monthlyValue = monthly != null ? (int)Math.Round(monthly.Utilization) : 0;
-        var monthlyValueClamped = monthly != null ? Math.Max(1, Math.Min(100, monthlyValue)) : 0;
-        var monthlyRemaining = Math.Max(1, 100 - monthlyValueClamped);
         var monthlyReset = "";
         if (monthly?.ResetsAt != null)
         {
@@ -378,18 +362,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Qwen";
         var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
 
-        // Remaining bar width for progress bar background
-        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
-        var sevenDayRemaining = Math.Max(1, 100 - sevenDayValueClamped);
-
         return $$"""
         {
-            "barStyle": "{{barStyle}}",
+            "barColor": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
-            "percentValueClamped": {{percentValueClamped}},
-            "percentRemaining": {{percentRemaining}},
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
             "outputTokens": "{{FormatNumber(total.OutputTokens)}}",
@@ -397,19 +375,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarStyle": "{{sevenDayBarStyle}}",
+            "sevenDayBarColor": "{{sevenDayBarStyle}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
-            "sevenDayValueClamped": {{sevenDayValueClamped}},
-            "sevenDayRemaining": {{sevenDayRemaining}},
             "sevenDayReset": "{{sevenDayReset}}",
-            "monthlyBarStyle": "{{monthlyBarStyle}}",
+            "monthlyBarColor": "{{monthlyBarStyle}}",
             "monthlyStatusColor": "{{monthlyStatusColor}}",
             "monthlyPercent": "{{monthlyPercent}}",
             "monthlyValue": {{monthlyValue}},
-            "monthlyValueClamped": {{monthlyValueClamped}},
-            "monthlyRemaining": {{monthlyRemaining}},
             "monthlyReset": "{{monthlyReset}}",
             "extraUsage": "{{extraText}}",
             "planName": "{{planName}}",
@@ -434,8 +408,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var utilization = fiveHour?.Utilization ?? 0;
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
-        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
-        if (fiveHour == null) percentValueClamped = 0;
 
         var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
@@ -451,13 +423,9 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             }
         }
 
-        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
-
         // Weekly quota
         var weeklyPercent = weekly != null ? $"{weekly.Utilization:F0}%" : "—%";
         var weeklyValue = weekly != null ? (int)Math.Round(weekly.Utilization) : 0;
-        var weeklyValueClamped = weekly != null ? Math.Max(1, Math.Min(100, weeklyValue)) : 0;
-        var weeklyRemaining = Math.Max(1, 100 - weeklyValueClamped);
         var weeklyReset = "";
         if (weekly?.ResetsAt != null)
         {
@@ -472,19 +440,15 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         return $$"""
         {
             "providerName": "{{providerName}}",
-            "barStyle": "{{barStyle}}",
+            "barColor": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
-            "percentValueClamped": {{percentValueClamped}},
-            "percentRemaining": {{percentRemaining}},
             "resetTime": "{{resetText}}",
-            "weeklyBarStyle": "{{weeklyBarStyle}}",
+            "weeklyBarColor": "{{weeklyBarStyle}}",
             "weeklyStatusColor": "{{weeklyStatusColor}}",
             "weeklyPercent": "{{weeklyPercent}}",
             "weeklyValue": {{weeklyValue}},
-            "weeklyValueClamped": {{weeklyValueClamped}},
-            "weeklyRemaining": {{weeklyRemaining}},
             "weeklyReset": "{{weeklyReset}}",
             "totalTokens": "{{FormatNumber(total.Total)}}",
             "inputTokens": "{{FormatNumber(total.InputTokens)}}",
@@ -507,8 +471,6 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var utilization = monthly?.Utilization ?? 0;
         var percentText = monthly != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
-        var percentValueClamped = Math.Max(1, Math.Min(100, percentValue));
-        if (monthly == null) percentValueClamped = 0;
 
         var (barStyle, statusColor) = GetStatusVisuals(utilization, monthly != null);
 
@@ -533,16 +495,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             }
         }
 
-        var percentRemaining = Math.Max(1, 100 - percentValueClamped);
-
         return $$"""
         {
-            "barStyle": "{{barStyle}}",
+            "barColor": "{{barStyle}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
-            "percentValueClamped": {{percentValueClamped}},
-            "percentRemaining": {{percentRemaining}},
             "usageText": "{{usageText}}",
             "resetTime": "{{resetText}}",
             "size": "{{size}}"

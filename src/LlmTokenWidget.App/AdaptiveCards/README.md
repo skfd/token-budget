@@ -29,10 +29,9 @@ This directory contains the Adaptive Card template definitions for the LLM Token
 All templates support data binding using the `${variableName}` syntax. Common variables include:
 
 ### Progress Bar Variables
-- `${percentValueClamped}` - Width percentage for the filled portion (0-100)
-- `${percentRemaining}` - Width percentage for the unfilled portion (0-100)
+- `${percentValue}` - Usage percentage value for ProgressBar (0-100)
 - `${percentText}` - Percentage text to display (e.g., "57%")
-- `${barStyle}` - Column style for the progress bar fill (accent/warning/attention)
+- `${barColor}` - ProgressBar color based on usage level (accent/warning/attention)
 - `${statusColor}` - Text color based on usage level (accent/warning/attention)
 
 ### Time Variables
@@ -50,16 +49,14 @@ All templates support data binding using the `${variableName}` syntax. Common va
 
 ### Weekly Quota Variables (Claude/Qwen)
 - `${sevenDayPercent}` - Weekly usage percentage
-- `${sevenDayValueClamped}` - Weekly progress bar fill width
-- `${sevenDayRemaining}` - Weekly progress bar unfilled width
-- `${sevenDayBarStyle}` - Weekly progress bar fill style (accent/warning/attention)
+- `${sevenDayValue}` - Weekly ProgressBar value (0-100)
+- `${sevenDayBarColor}` - Weekly ProgressBar color (accent/warning/attention)
 - `${sevenDayStatusColor}` - Weekly status color
 
 ### Monthly Quota Variables (Qwen)
 - `${monthlyPercent}` - Monthly usage percentage
-- `${monthlyValueClamped}` - Monthly progress bar fill width
-- `${monthlyRemaining}` - Monthly progress bar unfilled width
-- `${monthlyBarStyle}` - Monthly progress bar fill style (accent/warning/attention)
+- `${monthlyValue}` - Monthly ProgressBar value (0-100)
+- `${monthlyBarColor}` - Monthly ProgressBar color (accent/warning/attention)
 - `${monthlyStatusColor}` - Monthly status color
 
 ## Loading Templates
@@ -80,7 +77,7 @@ When modifying templates:
 4. Rebuild the project to embed the updated template
 5. Redeploy the MSIX package to apply changes
 
-The templates use the [Adaptive Cards](https://adaptivecards.io/) schema version 1.5. Refer to the Adaptive Cards documentation for available UI elements and properties.
+The templates use the [Adaptive Cards](https://adaptivecards.io/) schema version 1.6 with native `ProgressBar` elements. Refer to the Adaptive Cards documentation for available UI elements and properties.
 
 ## Build Integration
 

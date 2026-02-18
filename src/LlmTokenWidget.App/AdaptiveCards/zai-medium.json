@@ -1,7 +1,7 @@
 {
     "type": "AdaptiveCard",
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-    "version": "1.5",
+    "version": "1.6",
     "body": [
         {
             "type": "TextBlock",
@@ -26,24 +26,10 @@
                     "width": "stretch",
                     "items": [
                         {
-                            "type": "ColumnSet",
-                            "spacing": "none",
-                            "columns": [
-                                {
-                                    "type": "Column",
-                                    "width": "${percentValueClamped}",
-                                    "items": [],
-                                    "minHeight": "4px",
-                                    "style": "${barStyle}"
-                                },
-                                {
-                                    "type": "Column",
-                                    "width": "${percentRemaining}",
-                                    "items": [],
-                                    "minHeight": "4px",
-                                    "style": "emphasis"
-                                }
-                            ]
+                            "type": "ProgressBar",
+                            "value": "${percentValue}",
+                            "max": 100,
+                            "color": "${barColor}"
                         }
                     ],
                     "verticalContentAlignment": "center"
@@ -93,24 +79,10 @@
                             "width": "stretch",
                             "items": [
                                 {
-                                    "type": "ColumnSet",
-                                    "spacing": "none",
-                                    "columns": [
-                                        {
-                                            "type": "Column",
-                                            "width": "${weeklyValueClamped}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "${weeklyBarStyle}"
-                                        },
-                                        {
-                                            "type": "Column",
-                                            "width": "${weeklyRemaining}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "emphasis"
-                                        }
-                                    ]
+                                    "type": "ProgressBar",
+                                    "value": "${weeklyValue}",
+                                    "max": 100,
+                                    "color": "${weeklyBarColor}"
                                 }
                             ],
                             "verticalContentAlignment": "center"
