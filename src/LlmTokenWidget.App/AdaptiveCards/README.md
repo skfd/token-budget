@@ -31,7 +31,7 @@ All templates support data binding using the `${variableName}` syntax. Common va
 ### Progress Bar Variables
 - `${percentValue}` - Usage percentage value for ProgressBar (0-100)
 - `${percentText}` - Percentage text to display (e.g., "57%")
-- `${barColor}` - ProgressBar color based on usage level (accent/warning/attention)
+- `${barColor}` - ProgressBar color based on usage level (Accent/Warning/Attention)
 - `${statusColor}` - Text color based on usage level (accent/warning/attention)
 
 ### Time Variables
@@ -50,13 +50,13 @@ All templates support data binding using the `${variableName}` syntax. Common va
 ### Weekly Quota Variables (Claude/Qwen)
 - `${sevenDayPercent}` - Weekly usage percentage
 - `${sevenDayValue}` - Weekly ProgressBar value (0-100)
-- `${sevenDayBarColor}` - Weekly ProgressBar color (accent/warning/attention)
+- `${sevenDayBarColor}` - Weekly ProgressBar color (Accent/Warning/Attention)
 - `${sevenDayStatusColor}` - Weekly status color
 
 ### Monthly Quota Variables (Qwen)
 - `${monthlyPercent}` - Monthly usage percentage
 - `${monthlyValue}` - Monthly ProgressBar value (0-100)
-- `${monthlyBarColor}` - Monthly ProgressBar color (accent/warning/attention)
+- `${monthlyBarColor}` - Monthly ProgressBar color (Accent/Warning/Attention)
 - `${monthlyStatusColor}` - Monthly status color
 
 ## Loading Templates

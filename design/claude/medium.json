@@ -1,17 +1,13 @@
 {
-    "barStyle": "accent",
+    "barColor": "Accent",
     "statusColor": "accent",
     "percentText": "57%",
     "percentValue": 57,
-    "percentValueClamped": 57,
-    "percentRemaining": 43,
     "resetTime": "Resets in 2 hr 15 min",
     "extraUsage": "",
-    "sevenDayBarStyle": "accent",
+    "sevenDayBarColor": "Accent",
     "sevenDayStatusColor": "accent",
     "sevenDayPercent": "15%",
     "sevenDayValue": 15,
-    "sevenDayValueClamped": 15,
-    "sevenDayRemaining": 85,
     "sevenDayReset": "Resets Mon 12:00 AM"
 }

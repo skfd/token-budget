@@ -220,7 +220,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentValue = (int)Math.Round(utilization);
 
         // Status visuals based on utilization
-        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
+        var (barColor, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         // Reset countdown
         var resetText = "";
@@ -247,7 +247,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
-        var (sevenDayBarStyle, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
+        var (sevenDayBarColor, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
 
         // Extra usage info
         var extraText = "";
@@ -266,7 +266,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barColor": "{{barStyle}}",
+            "barColor": "{{barColor}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -277,7 +277,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarColor": "{{sevenDayBarStyle}}",
+            "sevenDayBarColor": "{{sevenDayBarColor}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
@@ -307,7 +307,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentValue = (int)Math.Round(utilization);
 
         // Status visuals based on utilization
-        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
+        var (barColor, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         // Reset countdown
         var resetText = "";
@@ -334,7 +334,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 sevenDayReset = $"Resets {sevenDay.ResetsAt.Value.LocalDateTime:ddd h:mm tt}";
             }
         }
-        var (sevenDayBarStyle, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
+        var (sevenDayBarColor, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
 
         // Monthly quota
         var monthly = oauth?.Monthly;
@@ -349,7 +349,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 monthlyReset = $"Resets {monthly.ResetsAt.Value.LocalDateTime:MMM d}";
             }
         }
-        var (monthlyBarStyle, monthlyStatusColor) = GetStatusVisuals(monthly?.Utilization ?? 0, monthly != null);
+        var (monthlyBarColor, monthlyStatusColor) = GetStatusVisuals(monthly?.Utilization ?? 0, monthly != null);
 
         // No overage info for Qwen
         var extraText = "";
@@ -364,7 +364,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barColor": "{{barStyle}}",
+            "barColor": "{{barColor}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -375,12 +375,12 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "cacheRead": "{{FormatNumber(total.CacheReadTokens)}}",
             "messageCount": "{{usage.MessageCount}}",
             "resetTime": "{{resetText}}",
-            "sevenDayBarColor": "{{sevenDayBarStyle}}",
+            "sevenDayBarColor": "{{sevenDayBarColor}}",
             "sevenDayStatusColor": "{{sevenDayStatusColor}}",
             "sevenDayPercent": "{{sevenDayPercent}}",
             "sevenDayValue": {{sevenDayValue}},
             "sevenDayReset": "{{sevenDayReset}}",
-            "monthlyBarColor": "{{monthlyBarStyle}}",
+            "monthlyBarColor": "{{monthlyBarColor}}",
             "monthlyStatusColor": "{{monthlyStatusColor}}",
             "monthlyPercent": "{{monthlyPercent}}",
             "monthlyValue": {{monthlyValue}},
@@ -409,7 +409,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentText = fiveHour != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
 
-        var (barStyle, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
+        var (barColor, statusColor) = GetStatusVisuals(utilization, fiveHour != null);
 
         var resetText = "";
         if (fiveHour?.ResetsAt != null)
@@ -435,17 +435,17 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
                 weeklyReset = $"Resets {weekly.ResetsAt.Value.LocalDateTime:ddd MMM d, h:mm tt}";
             }
         }
-        var (weeklyBarStyle, weeklyStatusColor) = GetStatusVisuals(weekly?.Utilization ?? 0, weekly != null);
+        var (weeklyBarColor, weeklyStatusColor) = GetStatusVisuals(weekly?.Utilization ?? 0, weekly != null);
 
         return $$"""
         {
             "providerName": "{{providerName}}",
-            "barColor": "{{barStyle}}",
+            "barColor": "{{barColor}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
             "resetTime": "{{resetText}}",
-            "weeklyBarColor": "{{weeklyBarStyle}}",
+            "weeklyBarColor": "{{weeklyBarColor}}",
             "weeklyStatusColor": "{{weeklyStatusColor}}",
             "weeklyPercent": "{{weeklyPercent}}",
             "weeklyValue": {{weeklyValue}},
@@ -472,7 +472,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         var percentText = monthly != null ? $"{utilization:F0}%" : "—%";
         var percentValue = (int)Math.Round(utilization);
 
-        var (barStyle, statusColor) = GetStatusVisuals(utilization, monthly != null);
+        var (barColor, statusColor) = GetStatusVisuals(utilization, monthly != null);
 
         // Get total used from provider
         long totalUsed = 0;
@@ -497,7 +497,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         return $$"""
         {
-            "barColor": "{{barStyle}}",
+            "barColor": "{{barColor}}",
             "statusColor": "{{statusColor}}",
             "percentText": "{{percentText}}",
             "percentValue": {{percentValue}},
@@ -519,14 +519,14 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         };
     }
 
-    private static (string barStyle, string statusColor) GetStatusVisuals(double utilization, bool hasData)
+    private static (string barColor, string statusColor) GetStatusVisuals(double utilization, bool hasData)
     {
-        if (!hasData) return ("emphasis", "default");
+        if (!hasData) return ("Accent", "default");
         return utilization switch
         {
-            > 80 => ("attention", "attention"),
-            > 60 => ("warning", "warning"),
-            _ => ("accent", "accent")
+            > 80 => ("Attention", "attention"),
+            > 60 => ("Warning", "warning"),
+            _ => ("Accent", "accent")
         };
     }
 
