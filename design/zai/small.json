@@ -1,7 +1,6 @@
 {
     "providerName": "Z.ai",
-    "barFillUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC",
-    "trackUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC",
+    "barStyle": "accent",
     "statusColor": "good",
     "percentText": "57%",
     "percentValue": 57,

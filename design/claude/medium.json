@@ -1,6 +1,5 @@
 {
-    "barFillUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC",
-    "trackUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC",
+    "barStyle": "accent",
     "statusColor": "good",
     "percentText": "57%",
     "percentValue": 57,
@@ -8,7 +7,7 @@
     "percentRemaining": 43,
     "resetTime": "Resets in 2 hr 15 min",
     "extraUsage": "",
-    "sevenDayBarFillUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC",
+    "sevenDayBarStyle": "accent",
     "sevenDayStatusColor": "good",
     "sevenDayPercent": "15%",
     "sevenDayValue": 15,
