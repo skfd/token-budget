@@ -1,6 +1,6 @@
 {
     "barStyle": "accent",
-    "statusColor": "good",
+    "statusColor": "accent",
     "percentText": "34%",
     "percentValue": 34,
     "percentValueClamped": 34,
