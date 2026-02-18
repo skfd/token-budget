@@ -345,4 +345,142 @@ Based on the analysis above, here's what an ideal LLM provider subscription shou
 
 ---
 
+## Subscription Tier Detection: Hardcoded vs Automatic
+
+This section documents how the widget currently determines user subscription tiers for each provider.
+
+### Current Implementation Status
+
+| Provider | Tier Detection Method | Hardcoded Limits | Notes |
+|----------|----------------------|------------------|-------|
+| **Claude Code** | ❌ Not detected | None | OAuth API returns utilization % but not absolute limits or plan tier |
+| **Z.ai** | ❌ Not detected | None | Quota API returns utilization % but not absolute limits or plan tier |
+| **GitHub Copilot** | ⚠️ Hardcoded assumption | **300 requests/month** (Pro tier) | Hardcoded in `CopilotUsageClient.cs:17` |
+| **Qwen Code** | ⚠️ Hardcoded assumption | **1,200 req/5h, 9,000/week, 18,000/month** (Coding Plan Lite) | Hardcoded in `UsageClient.cs:16-18` |
+
+### Detailed Analysis
+
+#### Claude Code (Anthropic)
+- **Detection method**: None — widget displays raw utilization percentages from OAuth API
+- **What the API provides**: Percentage-based rate limits (e.g., "57% of 5-hour quota used")
+- **What it doesn't provide**: 
+  - Absolute token limits (45M for Pro, 135M for Max5, etc.)
+  - User's actual subscription tier
+  - Total quota capacity
+- **Implication**: Widget cannot show "23M / 45M tokens" — only "57% used"
+- **Code location**: `src/LlmTokenWidget.Providers/ClaudeCode/OAuthUsageClient.cs`
+
+**Why this works**:
+- Utilization percentage is sufficient for the widget's purpose
+- Exact limits aren't needed since the API already calculates usage %
+- Different plan tiers (Pro/Max5/Max20) share the same percentage-based display
+
+#### Z.ai (GLM-4)
+- **Detection method**: None — widget displays raw utilization percentages from quota API
+- **What the API provides**: Percentage-based quotas with reset timestamps
+- **What it doesn't provide**:
+  - Absolute token limits
+  - User's subscription tier (Pro vs Free)
+  - Total quota capacity in tokens
+- **Implication**: Widget shows percentage without knowing if user has Pro or Free tier
+- **Code location**: `src/LlmTokenWidget.Providers/Zai/ZaiQuotaClient.cs`
+
+**Why this works**:
+- API returns `percentage` field directly (e.g., 57%)
+- No tier-specific behavior needed — same display for all tiers
+- Percentage is universal across subscription levels
+
+#### GitHub Copilot
+- **Detection method**: ⚠️ **HARDCODED** — Assumes Pro tier (300 requests/month)
+- **Hardcoded constant**: `ProQuotaLimit = 300` in `CopilotUsageClient.cs`
+- **What the API provides**: 
+  - Array of usage items with `grossQuantity` (total requests used)
+  - No quota limit information
+  - No subscription tier information
+- **What it doesn't provide**:
+  - User's actual tier (Individual/Business/Enterprise)
+  - Tier-specific quota limits
+- **Implication**: Widget will show incorrect data for Business or Enterprise users
+- **Code location**: 
+  - `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs:17` (constant)
+  - `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs:82` (calculation)
+  - `src/LlmTokenWidget.App/WidgetProvider.cs:535` (display: "300 premium requests")
+
+**Known issue**:
+- Business ($19/user/month) and Enterprise ($39/user/month) tiers may have different quotas
+- Current implementation assumes all users are on Individual/Pro plan
+- No GitHub API endpoint provides subscription tier or quota limits
+
+#### Qwen Code
+- **Detection method**: ⚠️ **HARDCODED** — Assumes Coding Plan Lite tier
+- **Hardcoded constants** in `UsageClient.cs`:
+  - `FiveHourLimit = 1200` requests
+  - `WeeklyLimit = 9000` requests  
+  - `MonthlyLimit = 18000` requests
+- **What the implementation provides**: 
+  - Client-side request counting by parsing local JSONL files
+  - Rolling window calculations
+- **What it doesn't provide**:
+  - Server-authoritative quota data
+  - User's actual subscription tier
+  - Detection of commercial/paid plans
+- **Implication**: Widget will show incorrect data for users on different/paid tiers
+- **Code location**: `src/LlmTokenWidget.Providers/Qwen/UsageClient.cs:16-18`
+
+**Known issue**:
+- No DashScope API available for Coding Plan quotas
+- All quota estimation is client-side based on assumed limits
+- Paid tiers likely have different limits, but no way to detect them
+
+### Problems with Current Approach
+
+1. **GitHub Copilot**: Business/Enterprise users see incorrect quota (300 instead of their actual limit)
+2. **Qwen Code**: Paid plan users see incorrect quotas (hardcoded Lite tier limits)
+3. **No tier auto-detection**: Widget cannot adapt to user's actual subscription level
+4. **No API support**: GitHub and Qwen don't expose tier/quota info via API
+
+### Ideal Solution
+
+For all providers, the widget should:
+
+1. **Tier auto-detection via API**: Providers should return subscription tier in their API responses
+2. **Absolute quota limits**: APIs should include total quota (not just utilization %)
+3. **Fallback to percentage-only**: If tier unknown, show percentage without absolute values
+4. **User configuration**: Allow manual tier selection in widget settings as fallback
+
+**Example ideal API response** (Claude Code):
+```json
+{
+  "subscription": {
+    "tier": "max5",
+    "display_name": "Max 5x"
+  },
+  "five_hour": {
+    "limit": 135000000,
+    "used": 76950000,
+    "utilization": 57.0,
+    "resets_at": "2026-02-18T23:30:00Z"
+  }
+}
+```
+
+### Recommendation for Widget
+
+**Short-term** (current phase):
+- ✅ Keep current hardcoded limits for Copilot and Qwen (document as known limitation)
+- ✅ Display percentage-only for Claude Code and Z.ai (works for all tiers)
+- ❌ Do not claim to support multiple tiers without detection
+
+**Medium-term** (future enhancement):
+- Add widget settings UI to manually select subscription tier
+- Store tier preference per provider in local config
+- Update quota calculations based on user-selected tier
+
+**Long-term** (requires API changes):
+- Advocate for providers to add tier/quota info to their APIs
+- Implement automatic tier detection when APIs support it
+- Remove hardcoded limits entirely
+
+---
+
 *Last updated: 2026-02-18*
