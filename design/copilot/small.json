@@ -1,0 +1,10 @@
+{
+    "barFillUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPIOR0PAAM9AZemk4WzAAAAAElFTkSuQmCC",
+    "trackUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwcHAAAAGEAMGDX2mUAAAAAElFTkSuQmCC",
+    "statusColor": "good",
+    "percentText": "16%",
+    "percentValue": 16,
+    "percentValueClamped": 16,
+    "percentRemaining": 84,
+    "resetTime": "Resets in 10 days"
+}
