@@ -1,0 +1,80 @@
+{
+    "type": "AdaptiveCard",
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.5",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Copilot Monthly Quota",
+            "weight": "bolder",
+            "size": "medium"
+        },
+        {
+            "type": "TextBlock",
+            "text": "${usageText}",
+            "size": "default",
+            "spacing": "small"
+        },
+        {
+            "type": "TextBlock",
+            "text": "${resetTime}",
+            "size": "small",
+            "weight": "lighter",
+            "isSubtle": true,
+            "spacing": "none"
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "ColumnSet",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "backgroundImage": {
+                                        "url": "${barFillUrl}",
+                                        "fillMode": "repeatHorizontally"
+                                    },
+                                    "minHeight": "4px"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "backgroundImage": {
+                                        "url": "${trackUrl}",
+                                        "fillMode": "repeatHorizontally"
+                                    },
+                                    "minHeight": "4px"
+                                }
+                            ]
+                        }
+                    ],
+                    "verticalContentAlignment": "center"
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${percentText} used",
+                            "size": "small",
+                            "weight": "lighter",
+                            "color": "${statusColor}"
+                        }
+                    ],
+                    "verticalContentAlignment": "center"
+                }
+            ]
+        }
+    ]
+}
