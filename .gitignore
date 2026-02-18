@@ -1,6 +1,16 @@
 # Claude Code project data (contains local session data)
 .claude/
 
+# Credential and secret files (prevent accidental commits)
+**/auth.json
+**/credentials.json
+**/.credentials.json
+**/copilot.json
+**/dashscope.json
+**/secrets.json
+*.key
+*.pem
+
 # Visual Studio / MSBuild
 .vs/
 bin/
@@ -91,3 +101,5 @@ $RECYCLE.BIN/
 *.assets.cache
 
 .*
+!.gitignore
+!.gitleaks.toml

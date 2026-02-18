@@ -1,0 +1,39 @@
+# Gitleaks configuration for secret detection
+# https://github.com/gitleaks/gitleaks
+
+title = "LLM Token Widget secret detection rules"
+
+# Built-in rules are enabled by default. These custom rules add
+# coverage for provider-specific key formats used by this project.
+
+[[rules]]
+id = "zai-api-key"
+description = "Z.ai / Zhipu API Key"
+regex = '''sk-sp-[0-9a-f]{32}'''
+keywords = ["sk-sp-"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[A-Za-z0-9_-]{20,}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "dashscope-api-key"
+description = "DashScope / Alibaba Cloud API Key"
+regex = '''sk-[0-9a-f]{32}'''
+keywords = ["sk-"]
+
+[[rules]]
+id = "github-pat"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[A-Za-z0-9]{36,}'''
+keywords = ["ghp_"]
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''\.gitleaks\.toml$''',
+    '''SECURITY\.md$''',
+    '''CLAUDE\.md$''',
+]
