@@ -1,0 +1,268 @@
+{
+    "type": "AdaptiveCard",
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.5",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Plan usage limits",
+            "weight": "bolder",
+            "size": "medium"
+        },
+        {
+            "type": "TextBlock",
+            "text": "Current session",
+            "weight": "bolder",
+            "size": "default",
+            "spacing": "small"
+        },
+        {
+            "type": "TextBlock",
+            "text": "${resetTime}",
+            "size": "small",
+            "weight": "lighter",
+            "isSubtle": true,
+            "spacing": "none"
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "ColumnSet",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "backgroundImage": {
+                                        "url": "${barFillUrl}",
+                                        "fillMode": "repeatHorizontally"
+                                    },
+                                    "minHeight": "4px"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "backgroundImage": {
+                                        "url": "${trackUrl}",
+                                        "fillMode": "repeatHorizontally"
+                                    },
+                                    "minHeight": "4px"
+                                }
+                            ]
+                        }
+                    ],
+                    "verticalContentAlignment": "center"
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${percentText} used",
+                            "size": "small",
+                            "weight": "lighter",
+                            "color": "${statusColor}"
+                        }
+                    ],
+                    "verticalContentAlignment": "center"
+                }
+            ]
+        },
+        {
+            "type": "TextBlock",
+            "text": "${extraUsage}",
+            "size": "small",
+            "isSubtle": true,
+            "spacing": "none",
+            "$when": "${extraUsage != ''}"
+        },
+        {
+            "type": "Container",
+            "spacing": "default",
+            "separator": true,
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "Weekly limits",
+                    "weight": "bolder",
+                    "size": "default",
+                    "spacing": "small"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "All models",
+                    "size": "small",
+                    "weight": "lighter",
+                    "isSubtle": true,
+                    "spacing": "none"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "${sevenDayReset}",
+                    "size": "small",
+                    "weight": "lighter",
+                    "isSubtle": true,
+                    "spacing": "none"
+                },
+                {
+                    "type": "ColumnSet",
+                    "spacing": "small",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "ColumnSet",
+                                    "spacing": "none",
+                                    "columns": [
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayValueClamped}",
+                                            "items": [],
+                                            "backgroundImage": {
+                                                "url": "${sevenDayBarFillUrl}",
+                                                "fillMode": "repeatHorizontally"
+                                            },
+                                            "minHeight": "4px"
+                                        },
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayRemaining}",
+                                            "items": [],
+                                            "backgroundImage": {
+                                                "url": "${trackUrl}",
+                                                "fillMode": "repeatHorizontally"
+                                            },
+                                            "minHeight": "4px"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "verticalContentAlignment": "center"
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${sevenDayPercent} used",
+                                    "size": "small",
+                                    "weight": "lighter",
+                                    "color": "${sevenDayStatusColor}"
+                                }
+                            ],
+                            "verticalContentAlignment": "center"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "spacing": "default",
+            "separator": true,
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "Token breakdown",
+                    "weight": "bolder",
+                    "size": "default",
+                    "spacing": "small"
+                },
+                {
+                    "type": "ColumnSet",
+                    "spacing": "small",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Input",
+                                    "size": "small",
+                                    "weight": "lighter",
+                                    "isSubtle": true
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${inputTokens}",
+                                    "size": "default",
+                                    "spacing": "none"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Output",
+                                    "size": "small",
+                                    "weight": "lighter",
+                                    "isSubtle": true
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${outputTokens}",
+                                    "size": "default",
+                                    "spacing": "none"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Cache W",
+                                    "size": "small",
+                                    "weight": "lighter",
+                                    "isSubtle": true
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${cacheCreation}",
+                                    "size": "default",
+                                    "spacing": "none"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Cache R",
+                                    "size": "small",
+                                    "weight": "lighter",
+                                    "isSubtle": true
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${cacheRead}",
+                                    "size": "default",
+                                    "spacing": "none"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

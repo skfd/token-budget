@@ -20,4 +20,8 @@
     <ProjectReference Include="..\LlmTokenWidget.Core\LlmTokenWidget.Core.csproj" />
     <ProjectReference Include="..\LlmTokenWidget.Providers\LlmTokenWidget.Providers.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="AdaptiveCards\*.json" />
+  </ItemGroup>
 </Project>
