@@ -105,6 +105,12 @@ Write-Host "`nRebuilding solution..." -ForegroundColor Yellow
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Build succeeded!" -ForegroundColor Green
 
+    # Copy images to build output (not included by wapproj build)
+    $imagesSrc = "packaging\TokenBudget.Package\Images"
+    $imagesDst = "packaging\TokenBudget.Package\bin\x64\Debug\Images"
+    Copy-Item -Path "$imagesSrc\*" -Destination $imagesDst -Recurse -Force
+    Write-Host "Images copied to build output" -ForegroundColor Green
+
     # Register the app package
     Write-Host "`nRegistering package..." -ForegroundColor Yellow
     $manifestPath = "packaging\TokenBudget.Package\bin\x64\Debug\AppxManifest.xml"
