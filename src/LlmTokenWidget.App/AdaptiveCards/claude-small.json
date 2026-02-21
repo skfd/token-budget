@@ -19,6 +19,7 @@
                     "items": [
                         {
                             "type": "ColumnSet",
+                            "$when": "${barStyle == 'accent'}",
                             "spacing": "none",
                             "columns": [
                                 {
@@ -26,7 +27,49 @@
                                     "width": "${percentValueClamped}",
                                     "items": [],
                                     "minHeight": "4px",
-                                    "style": "${barStyle}"
+                                    "style": "accent"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${barStyle == 'warning'}",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "warning"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${barStyle == 'attention'}",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "attention"
                                 },
                                 {
                                     "type": "Column",

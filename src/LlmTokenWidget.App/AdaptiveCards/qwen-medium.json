@@ -34,6 +34,7 @@
                     "items": [
                         {
                             "type": "ColumnSet",
+                            "$when": "${barStyle == 'accent'}",
                             "spacing": "none",
                             "columns": [
                                 {
@@ -41,7 +42,49 @@
                                     "width": "${percentValueClamped}",
                                     "items": [],
                                     "minHeight": "4px",
-                                    "style": "${barStyle}"
+                                    "style": "accent"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${barStyle == 'warning'}",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "warning"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${barStyle == 'attention'}",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "attention"
                                 },
                                 {
                                     "type": "Column",
@@ -101,6 +144,7 @@
                             "items": [
                                 {
                                     "type": "ColumnSet",
+                                    "$when": "${sevenDayBarStyle == 'accent'}",
                                     "spacing": "none",
                                     "columns": [
                                         {
@@ -108,7 +152,49 @@
                                             "width": "${sevenDayValueClamped}",
                                             "items": [],
                                             "minHeight": "4px",
-                                            "style": "${sevenDayBarStyle}"
+                                            "style": "accent"
+                                        },
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayRemaining}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "emphasis"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ColumnSet",
+                                    "$when": "${sevenDayBarStyle == 'warning'}",
+                                    "spacing": "none",
+                                    "columns": [
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayValueClamped}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "warning"
+                                        },
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayRemaining}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "emphasis"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ColumnSet",
+                                    "$when": "${sevenDayBarStyle == 'attention'}",
+                                    "spacing": "none",
+                                    "columns": [
+                                        {
+                                            "type": "Column",
+                                            "width": "${sevenDayValueClamped}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "attention"
                                         },
                                         {
                                             "type": "Column",
@@ -170,6 +256,7 @@
                             "items": [
                                 {
                                     "type": "ColumnSet",
+                                    "$when": "${monthlyBarStyle == 'accent'}",
                                     "spacing": "none",
                                     "columns": [
                                         {
@@ -177,7 +264,49 @@
                                             "width": "${monthlyValueClamped}",
                                             "items": [],
                                             "minHeight": "4px",
-                                            "style": "${monthlyBarStyle}"
+                                            "style": "accent"
+                                        },
+                                        {
+                                            "type": "Column",
+                                            "width": "${monthlyRemaining}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "emphasis"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ColumnSet",
+                                    "$when": "${monthlyBarStyle == 'warning'}",
+                                    "spacing": "none",
+                                    "columns": [
+                                        {
+                                            "type": "Column",
+                                            "width": "${monthlyValueClamped}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "warning"
+                                        },
+                                        {
+                                            "type": "Column",
+                                            "width": "${monthlyRemaining}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "emphasis"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ColumnSet",
+                                    "$when": "${monthlyBarStyle == 'attention'}",
+                                    "spacing": "none",
+                                    "columns": [
+                                        {
+                                            "type": "Column",
+                                            "width": "${monthlyValueClamped}",
+                                            "items": [],
+                                            "minHeight": "4px",
+                                            "style": "attention"
                                         },
                                         {
                                             "type": "Column",
