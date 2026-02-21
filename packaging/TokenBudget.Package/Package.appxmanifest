@@ -8,7 +8,7 @@
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap uap3 mp rescap com desktop">
 
-  <Identity Name="TokenBudget" Publisher="CN=TestCert" Version="1.0.37.0" />
+  <Identity Name="TokenBudget" Publisher="CN=TestCert" Version="1.0.47.0" />
 
   <mp:PhoneIdentity PhoneProductId="9F910C81-08A4-461F-93A6-96809C70A95D" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
@@ -48,7 +48,7 @@
 
         <!-- Widget Registration -->
         <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Token Budget v37" Id="WidgetProvider" PublicFolder="Public">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Token Budget v47" Id="WidgetProvider" PublicFolder="Public">
             <uap3:Properties>
               <WidgetProvider>
                 <ProviderIcons>
@@ -72,10 +72,10 @@
                     </Capabilities>
                     <ThemeResources>
                       <Icons>
-                        <Icon Path="Images\StoreLogo.png" />
+                        <Icon Path="Images\IconClaude.png" />
                       </Icons>
                       <Screenshots>
-                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Claude Code Usage Widget" />
+                        <Screenshot Path="Images\PreviewClaude.png" DisplayAltText="Claude Code Usage Widget" />
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
@@ -93,10 +93,10 @@
                     </Capabilities>
                     <ThemeResources>
                       <Icons>
-                        <Icon Path="Images\StoreLogo.png" />
+                        <Icon Path="Images\IconZai.png" />
                       </Icons>
                       <Screenshots>
-                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Z.ai Usage Widget" />
+                        <Screenshot Path="Images\PreviewZai.png" DisplayAltText="Z.ai Usage Widget" />
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
@@ -114,10 +114,10 @@
                     </Capabilities>
                     <ThemeResources>
                       <Icons>
-                        <Icon Path="Images\StoreLogo.png" />
+                        <Icon Path="Images\IconCopilot.png" />
                       </Icons>
                       <Screenshots>
-                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="GitHub Copilot Usage Widget" />
+                        <Screenshot Path="Images\PreviewCopilot.png" DisplayAltText="GitHub Copilot Usage Widget" />
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
@@ -135,10 +135,10 @@
                     </Capabilities>
                     <ThemeResources>
                       <Icons>
-                        <Icon Path="Images\StoreLogo.png" />
+                        <Icon Path="Images\IconQwen.png" />
                       </Icons>
                       <Screenshots>
-                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Alibaba Qwen Usage Widget" />
+                        <Screenshot Path="Images\PreviewQwen.png" DisplayAltText="Alibaba Qwen Usage Widget" />
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
