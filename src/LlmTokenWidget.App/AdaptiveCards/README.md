@@ -32,9 +32,8 @@ All templates support data binding using the `${variableName}` syntax. Common va
 - `${percentValueClamped}` - Width percentage for the filled portion (0-100)
 - `${percentRemaining}` - Width percentage for the unfilled portion (0-100)
 - `${percentText}` - Percentage text to display (e.g., "57%")
-- `${barFillUrl}` - Data URI for the progress bar fill color
-- `${trackUrl}` - Data URI for the progress bar track color
-- `${statusColor}` - Text color based on usage level (green/amber/red)
+- `${barStyle}` - Column style for the progress bar fill (accent/warning/attention)
+- `${statusColor}` - Text color based on usage level (accent/warning/attention)
 
 ### Time Variables
 - `${resetTime}` - Human-readable reset time (e.g., "Resets in 2h 15m")
@@ -53,13 +52,15 @@ All templates support data binding using the `${variableName}` syntax. Common va
 - `${sevenDayPercent}` - Weekly usage percentage
 - `${sevenDayValueClamped}` - Weekly progress bar fill width
 - `${sevenDayRemaining}` - Weekly progress bar unfilled width
-- `${sevenDayBarFillUrl}` - Weekly progress bar fill color
+- `${sevenDayBarStyle}` - Weekly progress bar fill style (accent/warning/attention)
 - `${sevenDayStatusColor}` - Weekly status color
 
 ### Monthly Quota Variables (Qwen)
 - `${monthlyPercent}` - Monthly usage percentage
 - `${monthlyValueClamped}` - Monthly progress bar fill width
 - `${monthlyRemaining}` - Monthly progress bar unfilled width
+- `${monthlyBarStyle}` - Monthly progress bar fill style (accent/warning/attention)
+- `${monthlyStatusColor}` - Monthly status color
 
 ## Loading Templates
 

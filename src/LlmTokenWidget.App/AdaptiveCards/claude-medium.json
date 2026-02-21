@@ -40,21 +40,15 @@
                                     "type": "Column",
                                     "width": "${percentValueClamped}",
                                     "items": [],
-                                    "backgroundImage": {
-                                        "url": "${barFillUrl}",
-                                        "fillMode": "repeatHorizontally"
-                                    },
-                                    "minHeight": "4px"
+                                    "minHeight": "4px",
+                                    "style": "${barStyle}"
                                 },
                                 {
                                     "type": "Column",
                                     "width": "${percentRemaining}",
                                     "items": [],
-                                    "backgroundImage": {
-                                        "url": "${trackUrl}",
-                                        "fillMode": "repeatHorizontally"
-                                    },
-                                    "minHeight": "4px"
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
                                 }
                             ]
                         }
@@ -129,21 +123,15 @@
                                             "type": "Column",
                                             "width": "${sevenDayValueClamped}",
                                             "items": [],
-                                            "backgroundImage": {
-                                                "url": "${sevenDayBarFillUrl}",
-                                                "fillMode": "repeatHorizontally"
-                                            },
-                                            "minHeight": "4px"
+                                            "minHeight": "4px",
+                                            "style": "${sevenDayBarStyle}"
                                         },
                                         {
                                             "type": "Column",
                                             "width": "${sevenDayRemaining}",
                                             "items": [],
-                                            "backgroundImage": {
-                                                "url": "${trackUrl}",
-                                                "fillMode": "repeatHorizontally"
-                                            },
-                                            "minHeight": "4px"
+                                            "minHeight": "4px",
+                                            "style": "emphasis"
                                         }
                                     ]
                                 }
@@ -168,5 +156,9 @@
                 }
             ]
         }
-    ]
+    ],
+    "backgroundImage": {
+        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAACCAYAAAAdK5NMAAABDklEQVR4nO3T11VCQRAAUIqYSsw550jO4ZFzhgeFYUAUQQyIFuWZ2be782MHfNwSru23uwA/HWlRMNGSMjOXYdaWVrTWKvkma0Jzndkg0wbaZLZgWpe2yReq7Vh2teoe+ST7QgUdMIfwUZaOtNKx5YS8o+IpcyYU0DlMlAuY5KVLyxW85aRrLXujjLO3QgbZGQeM08gJI8UFo5TkVl6THsYrJJCPDIkfhnEUYIIwNIQXI6TFwkyEPEdR1BITIsggAxKHQVhKaKEkPCkpIZhmMqQfQFkmB32/lIdHyVdgioK3BA9KWfCgClOFe7dU01x1SwPuJGeTaQmOFvQcbcaEnl3qWLpgmweZB5kH+T/IHy+Wah0/tsjJAAAAAElFTkSuQmCC",
+        "fillMode": "repeatVertically"
+    }
 }

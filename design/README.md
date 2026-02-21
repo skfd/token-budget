@@ -48,7 +48,7 @@ When you:
 - **Change what a variable contains** (e.g. format change) → update the sample
   value so it still reflects realistic output.
 
-The pixel data-URI values for `barFillUrl`, `trackUrl`, etc. come from the
-constants in `WidgetProvider.cs` (`DarkGreenPx`, `DarkTrackPx`, …). The samples
-here use the dark-theme variants so they render clearly in the designer's default
-dark preview.
+The `barStyle`, `sevenDayBarStyle`, `weeklyBarStyle`, and `monthlyBarStyle` values
+use Adaptive Card Column style names (`accent`, `warning`, `attention`) computed
+by `GetStatusVisuals()` in `WidgetProvider.cs`. The samples here use `accent`
+(normal utilization) so they render with the default accent color in the designer.

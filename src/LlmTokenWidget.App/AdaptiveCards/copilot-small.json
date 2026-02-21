@@ -25,21 +25,15 @@
                                     "type": "Column",
                                     "width": "${percentValueClamped}",
                                     "items": [],
-                                    "backgroundImage": {
-                                        "url": "${barFillUrl}",
-                                        "fillMode": "repeatHorizontally"
-                                    },
-                                    "minHeight": "4px"
+                                    "minHeight": "4px",
+                                    "style": "${barStyle}"
                                 },
                                 {
                                     "type": "Column",
                                     "width": "${percentRemaining}",
                                     "items": [],
-                                    "backgroundImage": {
-                                        "url": "${trackUrl}",
-                                        "fillMode": "repeatHorizontally"
-                                    },
-                                    "minHeight": "4px"
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
                                 }
                             ]
                         }
@@ -69,5 +63,9 @@
             "isSubtle": true,
             "spacing": "none"
         }
-    ]
+    ],
+    "backgroundImage": {
+        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAACCAYAAAAdK5NMAAAA8UlEQVR4nO3TV1ICQRAAUA4xxzErinnJLDmZEHMiCGYwHYysggHBw+hUV3f1TJU32I93hGcz0j/CSA2JU0oCF+NODBQeKQ68jC/2rfBLURBgzEhfEZTCIMSEQ1+KiBQEUSZmfiriUgAkmKT/Q5GSfCDNrHnfyTrygA1m090jW8gFMsy2s0uyyAA7zO7qG9lDK2CfOVh+JYdoCRwxx4sv5AQtgFPmbL5DcsjREXlNYa5Nimi2Lc41JXuLlNFMS1xoLqeb5ApNNcW15mayQW7RREPcaSrjdVJFY3Vxr3kYrZFHNFITT8zzH5sVxApiBfk/yC/gvY4NneHC3QAAAABJRU5ErkJggg==",
+        "fillMode": "repeatVertically"
+    }
 }
