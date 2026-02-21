@@ -58,7 +58,7 @@
                   <CreateInstance ClassId="9F910C81-08A4-461F-93A6-96809C70A95D" />
                 </Activation>
                 <Definitions>
-                  <Definition Id="Claude_Usage_Widget" DisplayName="Claude Code Usage v30" Description="Local token usage and cooldown estimate">
+                  <Definition Id="Claude_Usage_Widget" DisplayName="Claude Code Usage" Description="Local token usage and cooldown estimate">
                     <Capabilities>
                       <Capability>
                         <Size Name="small" />
