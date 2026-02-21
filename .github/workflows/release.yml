@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 1.0.40 or 1.0.40.0). Leave blank to use the current manifest version.'
+        required: false
+      notes:
+        description: 'Release notes (optional)'
+        required: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = '${{ inputs.version }}'.Trim()
+          if (-not $v) {
+            $xml = [xml](Get-Content "packaging/TokenBudget.Package/Package.appxmanifest")
+            $v = $xml.Package.Identity.Version
+          }
+          if ($v -notmatch '^\d+\.\d+\.\d+\.\d+$') { $v = "$v.0" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $v"
+
+      - name: Update manifest version
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $path = "packaging/TokenBudget.Package/Package.appxmanifest"
+          $content = Get-Content $path -Raw
+          $content = $content -replace 'Version="\d+\.\d+\.\d+\.\d+"', "Version=""$v"""
+          Set-Content -Path $path -Value $content -NoNewline
+
+      - name: Decode signing certificate
+        id: cert
+        shell: pwsh
+        run: |
+          $bytes = [Convert]::FromBase64String("${{ secrets.SIGNING_CERT_PFX }}")
+          [IO.File]::WriteAllBytes("cert.pfx", $bytes)
+          $pass = "${{ secrets.SIGNING_CERT_PASSWORD }}"
+          $securePass = ConvertTo-SecureString $pass -Force -AsPlainText
+          $cert = Import-PfxCertificate -FilePath cert.pfx -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass
+          Export-Certificate -Cert $cert -FilePath TokenBudget.cer -Type CERT
+
+      - name: Restore
+        run: msbuild TokenBudget.sln /t:Restore /p:Configuration=Release /p:Platform=x64
+
+      - name: Build MSIX
+        shell: pwsh
+        run: |
+          msbuild packaging/TokenBudget.Package/TokenBudget.Package.wapproj `
+            /p:Configuration=Release /p:Platform=x64 `
+            /p:AppxBundle=Never `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /p:AppxPackageSigningEnabled=true `
+            /p:PackageCertificateKeyFile=cert.pfx `
+            "/p:PackageCertificatePassword=${{ secrets.SIGNING_CERT_PASSWORD }}"
+
+      - name: Locate MSIX
+        id: msix
+        shell: pwsh
+        run: |
+          $f = Get-ChildItem packaging -Recurse -Filter *.msix | Select-Object -First 1
+          if (-not $f) { throw "No .msix file found after build" }
+          "path=$($f.FullName)" >> $env:GITHUB_OUTPUT
+          Write-Host "Found MSIX: $($f.FullName)"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Token Budget ${{ steps.ver.outputs.tag }}
+          body: |
+            ## Installation
+
+            > **Install the certificate before the MSIX.**
+
+            1. Download `TokenBudget.cer` → right-click → **Install Certificate** → Local Machine → **Trusted People**
+            2. Download the `.msix` file and double-click to install
+            3. Open Widgets Board (`Win+W`) and add "Token Budget"
+
+            ---
+
+            ${{ inputs.notes }}
+          files: |
+            ${{ steps.msix.outputs.path }}
+            TokenBudget.cer

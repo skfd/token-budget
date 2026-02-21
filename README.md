@@ -2,7 +2,7 @@
 
 A Windows 11 Widgets Board widget that tracks your LLM usage quotas at a glance — no browser tabs, no digging through dashboards.
 
-![Widget Screenshot](screenshot1.png)
+![Widget Screenshot](screenshot2.png)
 
 ## What it shows
 
