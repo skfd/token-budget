@@ -48,20 +48,16 @@ jobs:
           $content = $content -replace 'Version="\d+\.\d+\.\d+\.\d+"', "Version=""$v"""
           Set-Content -Path $path -Value $content -NoNewline
 
-      - name: Create signing certificate
+      - name: Decode signing certificate
         id: cert
         shell: pwsh
         run: |
-          $pass = ConvertTo-SecureString "build" -Force -AsPlainText
-          $cert = New-SelfSignedCertificate `
-            -Subject "CN=TestCert" `
-            -CertStoreLocation "Cert:\CurrentUser\My" `
-            -Type CodeSigningCert `
-            -KeyUsage DigitalSignature `
-            -NotAfter (Get-Date).AddYears(1)
-          Export-PfxCertificate -Cert $cert -FilePath cert.pfx -Password $pass
+          $bytes = [Convert]::FromBase64String("${{ secrets.SIGNING_CERT_PFX }}")
+          [IO.File]::WriteAllBytes("cert.pfx", $bytes)
+          $pass = "${{ secrets.SIGNING_CERT_PASSWORD }}"
+          $securePass = ConvertTo-SecureString $pass -Force -AsPlainText
+          $cert = Import-PfxCertificate -FilePath cert.pfx -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass
           Export-Certificate -Cert $cert -FilePath TokenBudget.cer -Type CERT
-          Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
 
       - name: Restore
         run: msbuild TokenBudget.sln /t:Restore /p:Configuration=Release /p:Platform=x64
@@ -75,7 +71,7 @@ jobs:
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageSigningEnabled=true `
             /p:PackageCertificateKeyFile=cert.pfx `
-            /p:PackageCertificatePassword=build
+            "/p:PackageCertificatePassword=${{ secrets.SIGNING_CERT_PASSWORD }}"
 
       - name: Locate MSIX
         id: msix
