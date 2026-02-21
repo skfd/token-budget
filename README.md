@@ -1,279 +1,73 @@
-﻿# Token Budget for Windows 11
+# Token Budget
 
-A Windows 11 Widgets Board widget that displays LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) by parsing local JSONL files, with extensibility for Anthropic API, OpenAI, and Google Gemini providers.
+A Windows 11 Widgets Board widget that tracks your LLM usage quotas at a glance — no browser tabs, no digging through dashboards.
 
 ![Widget Screenshot](screenshot1.png)
 
-*The widget displays real-time token usage, quota limits, and cooldown estimates for Claude Code, Z.ai, and GitHub Copilot.*
+## What it shows
 
-## Phase 1: Scaffold + Hello Widget ✅
+Four widgets, one per service:
 
-**Status: Code Complete - Ready for Build & Deploy**
+| Widget | Tracks |
+|--------|--------|
+| **Claude Code Usage** | 5-hour rolling token budget + weekly limits (Pro/Max plans) |
+| **Z.ai Usage** | 5-hour quota + weekly quota (GLM via opencode CLI) |
+| **GitHub Copilot Usage** | Monthly premium request count (300/month on Pro) |
+| **Alibaba Qwen Usage** | 5-hour, weekly, and monthly request quotas |
 
-### What's Been Implemented
+Each widget shows a progress bar, reset time, and usage percentage. The bar turns yellow near the limit and red when you're at or over it.
 
-✅ **Complete solution structure** with 4 projects:
-- `TokenBudget.Core` - Shared interfaces and models (placeholder for Phase 2)
-- `TokenBudget.Providers` - Provider implementations (placeholder for Phase 2)
-- `TokenBudget.App` - COM widget provider with working boilerplate
-- `TokenBudget.Package` - MSIX packaging with proper registrations
+## Requirements
 
-✅ **COM out-of-process server** (`Program.cs`):
-- Proper COM class factory registration
-- Message loop for COM lifetime management
-- Clean shutdown handling
+- Windows 11
+- Developer Mode enabled: **Settings → Privacy & Security → For developers → Developer Mode: On**
 
-✅ **Widget provider** (`WidgetProvider.cs`):
-- Implements `IWidgetProvider` and `IWidgetProvider2`
-- Handles widget lifecycle (Create/Delete/Activate/Deactivate)
-- Displays static "Hello Widget!" Adaptive Card
-- Responds to size changes
+## Installation
 
-✅ **MSIX packaging** (`Package.appxmanifest`):
-- COM server registration with correct CLSID
-- Two widget definitions:
-  - **Claude Code Usage** (Small/Medium/Large sizes)
-  - **LLM Usage Summary** (Medium/Large sizes)
-- Proper capabilities and extension declarations
+1. Download the latest `.msix` from [Releases](../../releases)
+2. Double-click to install (Windows will prompt to trust the package)
+3. Press **Win+W** to open the Widgets board
+4. Click **+** and search for "Claude", "Z.ai", "Copilot", or "Qwen"
+5. Add whichever widgets you want
 
-✅ **GUID synchronization** across all 3 critical locations:
-```
-9F910C81-08A4-461F-93A6-96809C70A95D
-```
-- `WidgetProvider.cs` [Guid] attribute
-- `Program.cs` CLSID_WidgetProvider constant
-- `Package.appxmanifest` COM Class + CreateInstance
+## Provider setup
 
-✅ **Placeholder assets**:
-- Logo images (150x150, 44x44, 310x150, store logo)
-- Blue background with "LLM" text
+### Claude Code
 
-### Files Created
+No setup needed. The widget reads your local Claude Code session files automatically.
 
-```
-C:\Users\kk\Code\token-budget\
-├── TokenBudget.sln
-├── BUILD.md                          # Detailed build instructions
-├── build.ps1                         # PowerShell build script
-├── CLAUDE.md                         # Project instructions (already existed)
-├── README.md                         # This file
-│
-├── src\
-│   ├── TokenBudget.Core\
-│   │   ├── TokenBudget.Core.csproj
-│   │   └── Placeholder.cs
-│   │
-│   ├── TokenBudget.Providers\
-│   │   ├── TokenBudget.Providers.csproj
-│   │   └── Placeholder.cs
-│   │
-│   └── TokenBudget.App\
-│       ├── TokenBudget.App.csproj
-│       ├── Program.cs                # COM server entry point
-│       ├── FactoryHelper.cs          # COM class factory
-│       └── WidgetProvider.cs         # Widget lifecycle implementation
-│
-└── packaging\
-    └── TokenBudget.Package\
-        ├── TokenBudget.Package.wapproj
-        ├── Package.appxmanifest      # COM + widget registration
-        └── Images\
-            ├── Square150x150Logo.png
-            ├── Square44x44Logo.png
-            ├── Wide310x150Logo.png
-            └── StoreLogo.png
-```
+To see **plan usage limits** (the 5-hour quota bar), you need to be signed in to Claude Code with a Pro or Max subscription. The widget picks up your credentials automatically.
 
-## Building the Project
+### Z.ai (opencode CLI)
 
-### Prerequisites
+No setup needed if you use [opencode](https://opencode.ai/). The widget reads your local session files and fetches quota info from the Z.ai API using the credentials opencode already saved.
 
-1. **Windows 11** with **Developer Mode** enabled:
-   - Settings → Privacy & Security → For developers → Developer Mode: ON
+### GitHub Copilot
 
-2. **Visual Studio 2022** (Community, Professional, or Enterprise):
-   - **Required workload**: "Windows application development"
-   - This includes Windows App SDK, MSIX packaging tools, and .NET 8
+Requires [GitHub CLI](https://cli.github.com/) installed and authenticated:
 
-3. **.NET 8 SDK** (included with VS 2022)
-
-4. **For GitHub Copilot widget** (optional):
-   - GitHub CLI (`gh`) installed
-   - Authenticated with `user` scope:
-     ```powershell
-     gh auth login
-     gh auth refresh -s user
-     ```
-   - Verify access:
-     ```powershell
-     gh api /user  # Should return your username
-     gh api /users/{your-username}/settings/billing/premium_request/usage
-     ```
-
-### Current Issue with VS Insiders
-
-⚠️ **VS Insiders installation is missing required components**:
-- `Microsoft.DesktopBridge.props` - needed for MSIX packaging
-- `Microsoft.Build.Packaging.Pri.Tasks.dll` - needed for PRI generation
-
-These are part of the "Windows application development" workload.
-
-### Option 1: Install Missing Components (Recommended)
-
-1. Open **Visual Studio Installer**
-2. Click **Modify** on your VS Insiders installation
-3. Select **Workloads** tab
-4. Check **Windows application development**
-5. Click **Modify** to install
-
-After installation completes:
 ```powershell
-# Open solution in Visual Studio
-start TokenBudget.sln
-
-# Or use the build script
-.\build.ps1 -Deploy
+gh auth login
+gh auth refresh -s user
 ```
 
-### Option 2: Install Visual Studio 2022 Community
+The widget uses `gh auth token` to read your credentials — no manual token entry needed.
 
-If you prefer not to modify VS Insiders:
+### Alibaba Qwen Code
 
-1. Download VS 2022 Community: https://visualstudio.microsoft.com/downloads/
-2. During installation, select **Windows application development** workload
-3. After installation:
-   ```powershell
-   .\build.ps1 -Deploy
-   ```
+No setup needed. The widget reads your local Qwen Code session files and estimates quota usage client-side (no Alibaba API required).
 
-## Verification Steps
+## FAQ
 
-Once you successfully build and deploy:
+**Why does the widget show stale data after I close the Widgets board?**
+Widgets only update while the board is open. Open Win+W to refresh.
 
-### 1. Check Installation
-```powershell
-Get-AppxPackage | Where-Object { $_.Name -like "*LlmToken*" }
-```
+**The widget disappeared / stopped working after a Windows update.**
+Reinstall the `.msix` package.
 
-Should show the installed package.
-
-### 2. Open Widgets Board
-- Press `Win+W`
-- Click the "+" button
-- Search for "Claude" or "LLM"
-
-You should see:
-- **Claude Code Usage**
-- **LLM Usage Summary**
-
-### 3. Add Widget
-- Click "Claude Code Usage"
-- Widget appears showing:
-  - "Hello Widget!" header
-  - "LLM Token Usage Widget - Phase 1 Scaffold"
-  - Current size (Small/Medium/Large)
-
-### 4. Test Resize
-- Right-click widget → Resize
-- Try different sizes
-- Widget updates with new size
-
-## Phase 1 Success Criteria
-
-- [x] Solution builds without errors
-- [x] MSIX deploys successfully
-- [ ] Widget appears in Win+W picker *(blocked by missing VS components)*
-- [ ] Widget can be added to Widgets Board *(blocked by missing VS components)*
-- [ ] Widget displays "Hello Widget!" content *(blocked by missing VS components)*
-
-**Next action**: Install "Windows application development" workload in Visual Studio, then build/deploy to complete verification.
-
-## Troubleshooting
-
-### Widget doesn't appear after deployment
-
-1. **Verify Developer Mode**:
-   ```powershell
-   Get-WindowsDeveloperLicense
-   ```
-
-2. **Check Event Viewer**:
-   - Event Viewer → Windows Logs → Application
-   - Filter for "WidgetService" or "WidgetManager"
-
-3. **Verify GUID consistency**:
-   ```powershell
-   Select-String -Path .\**\*.cs,.\**\*.appxmanifest -Pattern "9F910C81-08A4-461F-93A6-96809C70A95D"
-   ```
-   Should find exactly 4 matches.
-
-4. **Uninstall and redeploy**:
-   ```powershell
-   Remove-AppxPackage -Package "TokenBudget_1.0.0.0_x64__<package-id>"
-   .\build.ps1 -Deploy
-   ```
-
-### Build fails in Visual Studio
-
-1. Check platform is **x64** (not AnyCPU)
-2. Check configuration is **Debug** (Release requires code signing)
-3. Clean solution: Build → Clean Solution
-4. Rebuild: Build → Rebuild Solution
-
-## Next Steps
-
-### Phase 2: Claude Code Local Provider
-
-Once Phase 1 verification is complete:
-
-1. **Create interfaces** in `TokenBudget.Core`:
-   - `ILlmProvider` - Provider contract
-   - `IUsageData` - Token usage data model
-   - `CooldownEstimate` - Cooldown status model
-
-2. **Implement JSONL parser** in `TokenBudget.Providers`:
-   - Parse `%USERPROFILE%\.claude\projects\**\*.jsonl`
-   - Filter for `type == "assistant"` entries
-   - Sum token fields: input, output, cache_creation, cache_read
-   - Include subagent files
-
-3. **Create cooldown estimator**:
-   - Rolling 5-hour window calculation
-   - Compare against plan limits (Pro: 45M, Max5: 135M, Max20: 540M)
-   - Calculate time-until-reset
-
-4. **Update WidgetProvider**:
-   - Replace static card with live data
-   - Add `FileSystemWatcher` for auto-updates
-   - Display real token counts and cooldown status
-
-## Architecture Reference
-
-- **Full plan**: `C:\Users\kk\.claude\plans\joyful-marinating-thunder.md`
-- **Project docs**: `CLAUDE.md`
-- **Build guide**: `BUILD.md`
-
-## Key Technologies
-
-- **Platform**: Windows 11 Widgets Board
-- **Runtime**: .NET 8 (`net8.0-windows10.0.19041.0`)
-- **Framework**: Windows App SDK 1.6+
-- **Packaging**: MSIX
-- **UI**: Adaptive Cards (JSON declarative UI)
-- **Architecture**: COM out-of-process server
-
-## Critical GUID (Don't Change!)
-
-```
-9F910C81-08A4-461F-93A6-96809C70A95D
-```
-
-This GUID is synchronized across 4 locations. If you ever need to change it, you MUST update all 4 occurrences or the widget will fail to activate.
+**Can I add multiple copies of the same widget?**
+No, each widget is unique per service.
 
 ## License
 
-Private project - not for distribution.
-
----
-
-**Phase 1 Status**: ✅ Code Complete | ⏳ Awaiting Visual Studio workload installation for build verification
+MIT
