@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text.Json;
 
-namespace LlmTokenWidget.Providers.ClaudeCode;
+namespace TokenBudget.Providers.ClaudeCode;
 
 /// <summary>
 /// Reads the Claude Code OAuth access token from ~/.claude/.credentials.json.

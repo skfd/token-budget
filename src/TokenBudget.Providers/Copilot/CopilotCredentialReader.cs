@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
-namespace LlmTokenWidget.Providers.Copilot;
+namespace TokenBudget.Providers.Copilot;
 
 /// <summary>
 /// Reads the GitHub token from gh CLI (gh auth token) or fallback config.
@@ -12,7 +12,7 @@ public static class CopilotCredentialReader
 {
     private static readonly string FallbackConfigPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".config", "llm-token-widget", "copilot.json");
+        ".config", "token-budget", "copilot.json");
 
     private static string? _cachedToken;
     private static bool _triedGh;

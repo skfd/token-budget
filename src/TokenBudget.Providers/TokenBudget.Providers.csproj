@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0-windows10.0.22621</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,6 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LlmTokenWidget.Core\LlmTokenWidget.Core.csproj" />
+    <ProjectReference Include="..\TokenBudget.Core\TokenBudget.Core.csproj" />
   </ItemGroup>
 </Project>

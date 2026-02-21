@@ -1,9 +1,9 @@
-using LlmTokenWidget.Core;
+﻿using TokenBudget.Core;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LlmTokenWidget.Providers.Copilot;
+namespace TokenBudget.Providers.Copilot;
 
 /// <summary>
 /// GitHub Copilot provider. API-only — no local data files.
@@ -31,7 +31,7 @@ public sealed class CopilotProvider : ILlmProvider, IDisposable
         var hasToken = CopilotCredentialReader.CredentialsExist();
         return Task.FromResult(new ProviderAvailability(
             hasToken,
-            hasToken ? null : "No GitHub token found. Save PAT to ~/.config/llm-token-widget/copilot.json"));
+            hasToken ? null : "No GitHub token found. Save PAT to ~/.config/token-budget/copilot.json"));
     }
 
     public async Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)

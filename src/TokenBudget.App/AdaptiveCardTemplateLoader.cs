@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace LlmTokenWidget.App;
+namespace TokenBudget.App;
 
 public static class AdaptiveCardTemplateLoader
 {
@@ -20,7 +20,7 @@ public static class AdaptiveCardTemplateLoader
             }
 
             var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = $"LlmTokenWidget.App.AdaptiveCards.{templateName}";
+            var resourceName = $"TokenBudget.App.AdaptiveCards.{templateName}";
 
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)

@@ -1,4 +1,4 @@
-namespace LlmTokenWidget.Core;
+﻿namespace TokenBudget.Core;
 
 /// <summary>
 /// Breakdown of token counts by type.

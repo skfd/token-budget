@@ -1,10 +1,10 @@
-using LlmTokenWidget.Core;
+﻿using TokenBudget.Core;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LlmTokenWidget.Providers.ClaudeCode;
+namespace TokenBudget.Providers.ClaudeCode;
 
 /// <summary>
 /// Claude Code local provider.

@@ -1,6 +1,6 @@
-# Adaptive Card Templates
+﻿# Adaptive Card Templates
 
-This directory contains the Adaptive Card template definitions for the LLM Token Widget. Each template is a JSON file that defines the UI layout for different widget sizes and providers.
+This directory contains the Adaptive Card template definitions for the Token Budget. Each template is a JSON file that defines the UI layout for different widget sizes and providers.
 
 ## Template Files
 
@@ -92,4 +92,4 @@ The templates are automatically included as embedded resources via the project f
 </ItemGroup>
 ```
 
-The embedded resource name format is: `LlmTokenWidget.App.AdaptiveCards.{filename}`
+The embedded resource name format is: `TokenBudget.App.AdaptiveCards.{filename}`

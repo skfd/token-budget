@@ -1,7 +1,7 @@
-using System.Text.Json;
-using LlmTokenWidget.Core;
+﻿using System.Text.Json;
+using TokenBudget.Core;
 
-namespace LlmTokenWidget.Providers.ClaudeCode;
+namespace TokenBudget.Providers.ClaudeCode;
 
 /// <summary>
 /// Reads real-time statusline data from ~/.claude/widget-data.json.

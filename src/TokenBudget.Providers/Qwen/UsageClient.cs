@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using LlmTokenWidget.Core;
+using TokenBudget.Core;
 
-namespace LlmTokenWidget.Providers.Qwen;
+namespace TokenBudget.Providers.Qwen;
 
 /// <summary>
 /// Estimates Qwen Coding Plan Lite rate limits by counting requests in rolling windows.

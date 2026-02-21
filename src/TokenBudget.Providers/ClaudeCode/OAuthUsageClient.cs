@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using LlmTokenWidget.Core;
+using TokenBudget.Core;
 
-namespace LlmTokenWidget.Providers.ClaudeCode;
+namespace TokenBudget.Providers.ClaudeCode;
 
 /// <summary>
 /// Calls the Anthropic OAuth usage endpoint to retrieve rate-limit data.

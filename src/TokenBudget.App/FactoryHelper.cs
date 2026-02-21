@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using Microsoft.Windows.Widgets.Providers;
 using WinRT;
 
-namespace LlmTokenWidget.App;
+namespace TokenBudget.App;
 
 [ComImport]
 [ComVisible(false)]

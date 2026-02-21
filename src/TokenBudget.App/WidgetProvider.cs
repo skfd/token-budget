@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Windows.Widgets;
 using Microsoft.Windows.Widgets.Providers;
-using LlmTokenWidget.Core;
-using LlmTokenWidget.Providers.ClaudeCode;
-using LlmTokenWidget.Providers.Copilot;
-using LlmTokenWidget.Providers.Qwen;
-using LlmTokenWidget.Providers.Zai;
+using TokenBudget.Core;
+using TokenBudget.Providers.ClaudeCode;
+using TokenBudget.Providers.Copilot;
+using TokenBudget.Providers.Qwen;
+using TokenBudget.Providers.Zai;
 
-namespace LlmTokenWidget.App;
+namespace TokenBudget.App;
 
 [ComVisible(true)]
 [ComDefaultInterface(typeof(IWidgetProvider))]
@@ -37,7 +37,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
     {
         System.Diagnostics.Debug.WriteLine("WidgetProvider constructor called");
 
-        var gateway = new LlmTokenWidget.Core.HttpGateway();
+        var gateway = new TokenBudget.Core.HttpGateway();
 
         var claudeProvider = new ClaudeCodeLocalProvider(gateway);
         claudeProvider.DataChanged += OnProviderDataChanged;

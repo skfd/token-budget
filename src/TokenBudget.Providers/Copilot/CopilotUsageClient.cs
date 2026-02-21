@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using LlmTokenWidget.Core;
+using TokenBudget.Core;
 
-namespace LlmTokenWidget.Providers.Copilot;
+namespace TokenBudget.Providers.Copilot;
 
 /// <summary>
 /// Calls the GitHub billing API to retrieve Copilot premium request usage.
@@ -19,7 +19,7 @@ public sealed class CopilotUsageClient
 
     private static readonly IReadOnlyDictionary<string, string> GitHubHeaders = new Dictionary<string, string>
     {
-        ["User-Agent"] = "LlmTokenWidget/1.0",
+        ["User-Agent"] = "TokenBudget/1.0",
         ["Accept"] = "application/json"
     };
 

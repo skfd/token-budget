@@ -1,10 +1,10 @@
-using LlmTokenWidget.Core;
+﻿using TokenBudget.Core;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LlmTokenWidget.Providers.Qwen;
+namespace TokenBudget.Providers.Qwen;
 
 /// <summary>
 /// Qwen local provider.

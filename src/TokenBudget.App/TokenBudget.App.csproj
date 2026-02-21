@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.22621</TargetFramework>
@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LlmTokenWidget.Core\LlmTokenWidget.Core.csproj" />
-    <ProjectReference Include="..\LlmTokenWidget.Providers\LlmTokenWidget.Providers.csproj" />
+    <ProjectReference Include="..\TokenBudget.Core\TokenBudget.Core.csproj" />
+    <ProjectReference Include="..\TokenBudget.Providers\TokenBudget.Providers.csproj" />
   </ItemGroup>
 
   <ItemGroup>

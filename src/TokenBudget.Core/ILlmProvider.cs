@@ -1,4 +1,4 @@
-namespace LlmTokenWidget.Core;
+﻿namespace TokenBudget.Core;
 
 /// <summary>
 /// Contract for LLM usage data providers.

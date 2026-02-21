@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using LlmTokenWidget.Core;
+using TokenBudget.Core;
 
-namespace LlmTokenWidget.Providers.Zai;
+namespace TokenBudget.Providers.Zai;
 
 /// <summary>
 /// Calls the Z.ai quota endpoint to retrieve rate-limit data.

@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace LlmTokenWidget.Providers.Zai;
+namespace TokenBudget.Providers.Zai;
 
 public static class CredentialReader
 {

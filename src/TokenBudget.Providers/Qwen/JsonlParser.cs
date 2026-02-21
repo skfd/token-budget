@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace LlmTokenWidget.Providers.Qwen;
+namespace TokenBudget.Providers.Qwen;
 
 /// <summary>
 /// Parses Qwen Code JSONL session files at ~/.qwen/projects/*/chats/*.jsonl.

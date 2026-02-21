@@ -1,10 +1,10 @@
-using LlmTokenWidget.Core;
+﻿using TokenBudget.Core;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LlmTokenWidget.Providers.Zai;
+namespace TokenBudget.Providers.Zai;
 
 public sealed class ZaiLocalProvider : ILlmProvider, IDisposable
 {
