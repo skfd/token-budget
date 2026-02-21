@@ -22,7 +22,7 @@ public sealed class QwenLocalProvider : ILlmProvider, IDisposable
     private System.Threading.Timer? _debounceTimer;
 
     public string ProviderId => "qwen-local";
-    public string DisplayName => "Qwen";
+    public string DisplayName => "Alibaba Qwen";
     public TimeSpan PollingInterval => TimeSpan.FromSeconds(5);
 
     public event EventHandler? DataChanged;

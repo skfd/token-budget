@@ -27,7 +27,7 @@
 | **Claude Usage Widget** | Widget definition ID for Claude Code token tracking |
 | **Zai Usage Widget** | Widget definition ID for Z.ai/GLM token tracking |
 | **Copilot Usage Widget** | Widget definition ID for GitHub Copilot premium request tracking |
-| **Qwen Usage Widget** | Widget definition ID for Qwen token tracking |
+| **Alibaba Qwen Usage Widget** | Widget definition ID for Alibaba Qwen token tracking |
 | **rebuild-deploy.ps1** | Script for full rebuild, process cleanup, and package registration |
 | **5-Hour Rolling Window** | Claude Code Pro/Max plan token budget period |
 | **Cooldown** | Time until token budget resets when over limit |

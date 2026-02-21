@@ -8,7 +8,7 @@
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap uap3 mp rescap com desktop">
 
-  <Identity Name="LlmTokenWidget" Publisher="CN=TestCert" Version="1.0.30.0" />
+  <Identity Name="LlmTokenWidget" Publisher="CN=TestCert" Version="1.0.31.0" />
 
   <mp:PhoneIdentity PhoneProductId="9F910C81-08A4-461F-93A6-96809C70A95D" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
@@ -121,7 +121,7 @@
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
-                  <Definition Id="Qwen_Usage_Widget" DisplayName="Qwen Usage v29" Description="Track Qwen token usage with placeholder data">
+                  <Definition Id="Qwen_Usage_Widget" DisplayName="Alibaba Qwen Usage" Description="Track Qwen token usage with placeholder data">
                     <Capabilities>
                       <Capability>
                         <Size Name="small" />
@@ -138,7 +138,7 @@
                         <Icon Path="Images\StoreLogo.png" />
                       </Icons>
                       <Screenshots>
-                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Qwen Usage Widget" />
+                        <Screenshot Path="Images\StoreLogo.png" DisplayAltText="Alibaba Qwen Usage Widget" />
                       </Screenshots>
                     </ThemeResources>
                   </Definition>
