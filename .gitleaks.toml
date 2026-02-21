@@ -36,4 +36,5 @@ paths = [
     '''\.gitleaks\.toml$''',
     '''SECURITY\.md$''',
     '''CLAUDE\.md$''',
+    '''secrets/''',
 ]

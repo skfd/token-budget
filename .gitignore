@@ -10,6 +10,8 @@
 **/secrets.json
 *.key
 *.pem
+*.pfx
+secrets/
 
 # Visual Studio / MSBuild
 .vs/
