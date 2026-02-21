@@ -2,7 +2,7 @@
 
 A Windows 11 Widgets Board widget that displays LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) by parsing local JSONL files, with extensibility for Anthropic API, OpenAI, and Google Gemini providers.
 
-![Widget Screenshot](screenshot.png)
+![Widget Screenshot](screenshot1.png)
 
 *The widget displays real-time token usage, quota limits, and cooldown estimates for Claude Code, Z.ai, and GitHub Copilot.*
 
