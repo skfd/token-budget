@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -20,15 +20,15 @@ Windows 11 Widgets Board widget for displaying LLM token usage, costs, and coold
 ## Solution Structure
 
 ```
-LlmTokenWidget.sln
-├── src/LlmTokenWidget.Core/         # Interfaces, models, shared services
-├── src/LlmTokenWidget.Providers/    # ClaudeCode/Zai/Copilot/Qwen providers
+TokenBudget.sln
+├── src/TokenBudget.Core/         # Interfaces, models, shared services
+├── src/TokenBudget.Providers/    # ClaudeCode/Zai/Copilot/Qwen providers
 │   ├── ClaudeCode/                  # Claude Code local provider
 │   ├── Zai/                         # Z.ai/opencode CLI provider
 │   ├── Copilot/                     # GitHub Copilot API provider
 │   └── Qwen/                        # Qwen Code local provider
-├── src/LlmTokenWidget.App/          # COM widget provider executable
-└── packaging/LlmTokenWidget.Package/ # MSIX packaging project
+├── src/TokenBudget.App/          # COM widget provider executable
+└── packaging/TokenBudget.Package/ # MSIX packaging project
 ```
 
 ## Build Commands
@@ -41,12 +41,12 @@ This script handles the full cycle: version increment, process cleanup, rebuild,
 
 ### Build the solution
 ```powershell
-dotnet build LlmTokenWidget.sln
+dotnet build TokenBudget.sln
 ```
 
 ### Build in Release mode
 ```powershell
-dotnet build LlmTokenWidget.sln -c Release
+dotnet build TokenBudget.sln -c Release
 ```
 
 ### Run tests
@@ -62,7 +62,7 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 ### Deploy to Windows 11 (requires Developer Mode enabled)
 Build the packaging project in Visual Studio or:
 ```powershell
-msbuild packaging/LlmTokenWidget.Package/LlmTokenWidget.Package.wapproj /p:Configuration=Release /p:Platform=x64
+msbuild packaging/TokenBudget.Package/TokenBudget.Package.wapproj /p:Configuration=Release /p:Platform=x64
 ```
 
 Then deploy the resulting MSIX from Visual Studio or via `Add-AppxPackage`.
@@ -74,12 +74,12 @@ Then deploy the resulting MSIX from Visual Studio or via `Add-AppxPackage`.
 | `Package.appxmanifest` (widget defs, COM registration, display names, sizes) | Full redeploy (`rebuild-deploy.ps1`) |
 | MSIX package identity or capabilities | Full redeploy |
 | Adding/removing projects from the solution | Full redeploy |
-| C# code (providers, cards, widget logic) | Rebuild + kill `LlmTokenWidget.App.exe` (Widget Board relaunches it on demand) |
+| C# code (providers, cards, widget logic) | Rebuild + kill `TokenBudget.App.exe` (Widget Board relaunches it on demand) |
 | External data files (JSONL, `widget-data.json`, `auth.json`) | Nothing — read at runtime |
 
 **Why `rebuild-deploy.ps1` exists**: Windows aggressively caches widget metadata. Manifest changes (display name, widget IDs) won't appear until `WidgetService` and `WidgetBoard` processes are killed and the package is re-registered. The script handles all of this.
 
-**Shortcut for code-only changes**: `dotnet build LlmTokenWidget.sln` then kill the running exe. No MSIX reinstall needed.
+**Shortcut for code-only changes**: `dotnet build TokenBudget.sln` then kill the running exe. No MSIX reinstall needed.
 
 ## Critical Architecture Concepts
 
@@ -237,7 +237,7 @@ Current implementations:
 
 ### GitHub Copilot Provider (API-Only)
 
-**Credential location**: `~/.config/llm-token-widget/copilot.json`
+**Credential location**: `~/.config/token-budget/copilot.json`
 ```json
 { "token": "ghp_..." }
 ```
@@ -319,7 +319,7 @@ The token needs `user` scope (or `manage_billing:copilot`).
 API keys stored in `Windows.Security.Credentials.PasswordVault`:
 - Encrypted at rest, scoped to current user
 - MSIX identity sandbox isolation
-- Targets: `LlmTokenWidget:Anthropic`, `LlmTokenWidget:OpenAI`, `LlmTokenWidget:Gemini`
+- Targets: `TokenBudget:Anthropic`, `TokenBudget:OpenAI`, `TokenBudget:Gemini`
 
 ## Implementation Phases
 
@@ -371,18 +371,18 @@ Polling only runs when widgets are active (Widgets board open).
 
 ## Key Files Reference
 
-- `src/LlmTokenWidget.App/WidgetProvider.cs` — COM widget lifecycle (IWidgetProvider)
-- `src/LlmTokenWidget.App/Program.cs` — COM server entry point with CLSID registration
-- `src/LlmTokenWidget.Providers/ClaudeCode/StatuslineReader.cs` — Reads live session data from widget-data.json
-- `src/LlmTokenWidget.Providers/ClaudeCode/OAuthUsageClient.cs` — Fetches rate-limit data from Anthropic API
-- `src/LlmTokenWidget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
-- `src/LlmTokenWidget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
-- `src/LlmTokenWidget.Providers/Zai/ZaiQuotaClient.cs` — Fetches quota/rate-limit data from Z.ai API
-- `src/LlmTokenWidget.Providers/Copilot/CopilotCredentialReader.cs` — Reads GitHub PAT from config file
-- `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs` — Fetches premium request usage from GitHub API
-- `src/LlmTokenWidget.Providers/Copilot/CopilotProvider.cs` — GitHub Copilot provider implementation
-- `src/LlmTokenWidget.Providers/Qwen/JsonlParser.cs` — Parses Qwen Code JSONL session files
-- `src/LlmTokenWidget.Providers/Qwen/QwenLocalProvider.cs` — Qwen Code provider implementation
-- `src/LlmTokenWidget.Providers/Qwen/UsageClient.cs` — Client-side request counting for quota estimation
-- `packaging/LlmTokenWidget.Package/Package.appxmanifest` — COM + widget registration
+- `src/TokenBudget.App/WidgetProvider.cs` — COM widget lifecycle (IWidgetProvider)
+- `src/TokenBudget.App/Program.cs` — COM server entry point with CLSID registration
+- `src/TokenBudget.Providers/ClaudeCode/StatuslineReader.cs` — Reads live session data from widget-data.json
+- `src/TokenBudget.Providers/ClaudeCode/OAuthUsageClient.cs` — Fetches rate-limit data from Anthropic API
+- `src/TokenBudget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
+- `src/TokenBudget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
+- `src/TokenBudget.Providers/Zai/ZaiQuotaClient.cs` — Fetches quota/rate-limit data from Z.ai API
+- `src/TokenBudget.Providers/Copilot/CopilotCredentialReader.cs` — Reads GitHub PAT from config file
+- `src/TokenBudget.Providers/Copilot/CopilotUsageClient.cs` — Fetches premium request usage from GitHub API
+- `src/TokenBudget.Providers/Copilot/CopilotProvider.cs` — GitHub Copilot provider implementation
+- `src/TokenBudget.Providers/Qwen/JsonlParser.cs` — Parses Qwen Code JSONL session files
+- `src/TokenBudget.Providers/Qwen/QwenLocalProvider.cs` — Qwen Code provider implementation
+- `src/TokenBudget.Providers/Qwen/UsageClient.cs` — Client-side request counting for quota estimation
+- `packaging/TokenBudget.Package/Package.appxmanifest` — COM + widget registration
 - `rebuild-deploy.ps1` — Full rebuild and deploy script

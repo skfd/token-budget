@@ -1,4 +1,4 @@
-# LLM Token Widget for Windows 11
+﻿# Token Budget for Windows 11
 
 A Windows 11 Widgets Board widget that displays LLM token usage, costs, and cooldown estimates. Monitors Claude Code subscription usage (Pro/Max plan rolling 5-hour token budget) by parsing local JSONL files, with extensibility for Anthropic API, OpenAI, and Google Gemini providers.
 
@@ -13,10 +13,10 @@ A Windows 11 Widgets Board widget that displays LLM token usage, costs, and cool
 ### What's Been Implemented
 
 ✅ **Complete solution structure** with 4 projects:
-- `LlmTokenWidget.Core` - Shared interfaces and models (placeholder for Phase 2)
-- `LlmTokenWidget.Providers` - Provider implementations (placeholder for Phase 2)
-- `LlmTokenWidget.App` - COM widget provider with working boilerplate
-- `LlmTokenWidget.Package` - MSIX packaging with proper registrations
+- `TokenBudget.Core` - Shared interfaces and models (placeholder for Phase 2)
+- `TokenBudget.Providers` - Provider implementations (placeholder for Phase 2)
+- `TokenBudget.App` - COM widget provider with working boilerplate
+- `TokenBudget.Package` - MSIX packaging with proper registrations
 
 ✅ **COM out-of-process server** (`Program.cs`):
 - Proper COM class factory registration
@@ -51,31 +51,31 @@ A Windows 11 Widgets Board widget that displays LLM token usage, costs, and cool
 ### Files Created
 
 ```
-C:\Users\kk\Code\llm-token-widget\
-├── LlmTokenWidget.sln
+C:\Users\kk\Code\token-budget\
+├── TokenBudget.sln
 ├── BUILD.md                          # Detailed build instructions
 ├── build.ps1                         # PowerShell build script
 ├── CLAUDE.md                         # Project instructions (already existed)
 ├── README.md                         # This file
 │
 ├── src\
-│   ├── LlmTokenWidget.Core\
-│   │   ├── LlmTokenWidget.Core.csproj
+│   ├── TokenBudget.Core\
+│   │   ├── TokenBudget.Core.csproj
 │   │   └── Placeholder.cs
 │   │
-│   ├── LlmTokenWidget.Providers\
-│   │   ├── LlmTokenWidget.Providers.csproj
+│   ├── TokenBudget.Providers\
+│   │   ├── TokenBudget.Providers.csproj
 │   │   └── Placeholder.cs
 │   │
-│   └── LlmTokenWidget.App\
-│       ├── LlmTokenWidget.App.csproj
+│   └── TokenBudget.App\
+│       ├── TokenBudget.App.csproj
 │       ├── Program.cs                # COM server entry point
 │       ├── FactoryHelper.cs          # COM class factory
 │       └── WidgetProvider.cs         # Widget lifecycle implementation
 │
 └── packaging\
-    └── LlmTokenWidget.Package\
-        ├── LlmTokenWidget.Package.wapproj
+    └── TokenBudget.Package\
+        ├── TokenBudget.Package.wapproj
         ├── Package.appxmanifest      # COM + widget registration
         └── Images\
             ├── Square150x150Logo.png
@@ -129,7 +129,7 @@ These are part of the "Windows application development" workload.
 After installation completes:
 ```powershell
 # Open solution in Visual Studio
-start LlmTokenWidget.sln
+start TokenBudget.sln
 
 # Or use the build script
 .\build.ps1 -Deploy
@@ -209,7 +209,7 @@ You should see:
 
 4. **Uninstall and redeploy**:
    ```powershell
-   Remove-AppxPackage -Package "LlmTokenWidget_1.0.0.0_x64__<package-id>"
+   Remove-AppxPackage -Package "TokenBudget_1.0.0.0_x64__<package-id>"
    .\build.ps1 -Deploy
    ```
 
@@ -226,12 +226,12 @@ You should see:
 
 Once Phase 1 verification is complete:
 
-1. **Create interfaces** in `LlmTokenWidget.Core`:
+1. **Create interfaces** in `TokenBudget.Core`:
    - `ILlmProvider` - Provider contract
    - `IUsageData` - Token usage data model
    - `CooldownEstimate` - Cooldown status model
 
-2. **Implement JSONL parser** in `LlmTokenWidget.Providers`:
+2. **Implement JSONL parser** in `TokenBudget.Providers`:
    - Parse `%USERPROFILE%\.claude\projects\**\*.jsonl`
    - Filter for `type == "assistant"` entries
    - Sum token fields: input, output, cache_creation, cache_read

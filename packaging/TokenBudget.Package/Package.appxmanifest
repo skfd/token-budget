@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -8,12 +8,12 @@
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap uap3 mp rescap com desktop">
 
-  <Identity Name="LlmTokenWidget" Publisher="CN=TestCert" Version="1.0.35.0" />
+  <Identity Name="TokenBudget" Publisher="CN=TestCert" Version="1.0.36.0" />
 
   <mp:PhoneIdentity PhoneProductId="9F910C81-08A4-461F-93A6-96809C70A95D" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
   <Properties>
-    <DisplayName>LLM Token Widget</DisplayName>
+    <DisplayName>Token Budget</DisplayName>
     <PublisherDisplayName>TestPublisher</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
@@ -28,7 +28,7 @@
 
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-      <uap:VisualElements DisplayName="LLM Token Widget"
+      <uap:VisualElements DisplayName="Token Budget"
                           Description="Displays LLM token usage and cooldown estimates"
                           BackgroundColor="transparent"
                           Square150x150Logo="Images\Square150x150Logo.png"
@@ -40,7 +40,7 @@
         <!-- COM Registration -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:ExeServer Executable="LlmTokenWidget.App\LlmTokenWidget.App.exe" DisplayName="LLM Token Widget Provider" Arguments="-Embedding">
+            <com:ExeServer Executable="TokenBudget.App\TokenBudget.App.exe" DisplayName="Token Budget Provider" Arguments="-Embedding">
               <com:Class Id="9F910C81-08A4-461F-93A6-96809C70A95D" DisplayName="Widget Provider" />
             </com:ExeServer>
           </com:ComServer>
@@ -48,7 +48,7 @@
 
         <!-- Widget Registration -->
         <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="LLM Token Widget v30" Id="WidgetProvider" PublicFolder="Public">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Token Budget v36" Id="WidgetProvider" PublicFolder="Public">
             <uap3:Properties>
               <WidgetProvider>
                 <ProviderIcons>

@@ -1,4 +1,4 @@
-# Clean script for LLM Token Widget - removes bin and obj folders
+﻿# Clean script for Token Budget - removes bin and obj folders
 
 Write-Host "`n=== Cleaning bin and obj folders ===" -ForegroundColor Cyan
 

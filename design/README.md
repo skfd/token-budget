@@ -1,13 +1,13 @@
-# Adaptive Card Designer Sample Data
+﻿# Adaptive Card Designer Sample Data
 
 This folder contains sample data files for each Adaptive Card template in
-`src/LlmTokenWidget.App/AdaptiveCards/`. Use these when designing or previewing
+`src/TokenBudget.App/AdaptiveCards/`. Use these when designing or previewing
 cards in the [Adaptive Cards Designer](https://adaptivecards.io/designer/).
 
 ## How to use
 
 1. Open the designer at https://adaptivecards.io/designer/
-2. Paste the card template JSON (e.g. `src/LlmTokenWidget.App/AdaptiveCards/claude-large.json`) into the **Card Payload Editor**.
+2. Paste the card template JSON (e.g. `src/TokenBudget.App/AdaptiveCards/claude-large.json`) into the **Card Payload Editor**.
 3. Paste the matching sample data JSON (e.g. `design/claude/large.json`) into the **Sample Data Editor**.
 4. The designer will substitute the `${…}` bindings with the sample values.
 

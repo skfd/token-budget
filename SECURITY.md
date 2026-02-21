@@ -1,6 +1,6 @@
-# Security & Authentication
+﻿# Security & Authentication
 
-How the LLM Token Widget handles credentials and data access for each provider.
+How the Token Budget handles credentials and data access for each provider.
 
 ## Provider Comparison
 
@@ -82,7 +82,7 @@ If the auth file is missing or the key is invalid, the quota API call silently f
 **Priority order:**
 
 1. **`gh` CLI** — runs `gh auth token` to read the token from the GitHub CLI's credential store. Cached for the lifetime of the widget process.
-2. **Manual config file** — `%USERPROFILE%\.config\llm-token-widget\copilot.json` with `{"token": "ghp_..."}`.
+2. **Manual config file** — `%USERPROFILE%\.config\token-budget\copilot.json` with `{"token": "ghp_..."}`.
 
 ### Data accessed
 
@@ -106,7 +106,7 @@ gh auth login --scopes user
 1. Create a GitHub Personal Access Token with `user` scope.
 2. Save it:
    ```json
-   // %USERPROFILE%\.config\llm-token-widget\copilot.json
+   // %USERPROFILE%\.config\token-budget\copilot.json
    {"token": "ghp_your_token_here"}
    ```
 
@@ -157,7 +157,7 @@ If no JSONL files exist under `~/.qwen/projects/`, the widget shows no data. The
 
 ## Network Access Architecture
 
-All outbound HTTP requests are funneled through a single class: `HttpGateway` (`src/LlmTokenWidget.Core/HttpGateway.cs`). No other code in the project creates `HttpClient` instances or sends HTTP requests directly.
+All outbound HTTP requests are funneled through a single class: `HttpGateway` (`src/TokenBudget.Core/HttpGateway.cs`). No other code in the project creates `HttpClient` instances or sends HTTP requests directly.
 
 The gateway maintains a hardcoded allowlist of exactly 4 endpoints:
 

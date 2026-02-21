@@ -1,4 +1,4 @@
-# LLM Provider Subscription Assumptions
+﻿# LLM Provider Subscription Assumptions
 
 This document describes the assumptions we make about various LLM provider subscriptions and what the correct/ideal shape of these subscriptions should be. This is a product-level analysis, not a code implementation discussion.
 
@@ -368,7 +368,7 @@ This section documents how the widget currently determines user subscription tie
   - User's actual subscription tier
   - Total quota capacity
 - **Implication**: Widget cannot show "23M / 45M tokens" — only "57% used"
-- **Code location**: `src/LlmTokenWidget.Providers/ClaudeCode/OAuthUsageClient.cs`
+- **Code location**: `src/TokenBudget.Providers/ClaudeCode/OAuthUsageClient.cs`
 
 **Why this works**:
 - Utilization percentage is sufficient for the widget's purpose
@@ -383,7 +383,7 @@ This section documents how the widget currently determines user subscription tie
   - User's subscription tier (Pro vs Free)
   - Total quota capacity in tokens
 - **Implication**: Widget shows percentage without knowing if user has Pro or Free tier
-- **Code location**: `src/LlmTokenWidget.Providers/Zai/ZaiQuotaClient.cs`
+- **Code location**: `src/TokenBudget.Providers/Zai/ZaiQuotaClient.cs`
 
 **Why this works**:
 - API returns `percentage` field directly (e.g., 57%)
@@ -402,9 +402,9 @@ This section documents how the widget currently determines user subscription tie
   - Tier-specific quota limits
 - **Implication**: Widget will show incorrect data for Business or Enterprise users
 - **Code location**: 
-  - `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs:17` (constant)
-  - `src/LlmTokenWidget.Providers/Copilot/CopilotUsageClient.cs:82` (calculation)
-  - `src/LlmTokenWidget.App/WidgetProvider.cs:535` (display: "300 premium requests")
+  - `src/TokenBudget.Providers/Copilot/CopilotUsageClient.cs:17` (constant)
+  - `src/TokenBudget.Providers/Copilot/CopilotUsageClient.cs:82` (calculation)
+  - `src/TokenBudget.App/WidgetProvider.cs:535` (display: "300 premium requests")
 
 **Known issue**:
 - Business ($19/user/month) and Enterprise ($39/user/month) tiers may have different quotas
@@ -425,7 +425,7 @@ This section documents how the widget currently determines user subscription tie
   - User's actual subscription tier
   - Detection of commercial/paid plans
 - **Implication**: Widget will show incorrect data for users on different/paid tiers
-- **Code location**: `src/LlmTokenWidget.Providers/Qwen/UsageClient.cs:16-18`
+- **Code location**: `src/TokenBudget.Providers/Qwen/UsageClient.cs:16-18`
 
 **Known issue**:
 - No DashScope API available for Coding Plan quotas

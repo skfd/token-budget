@@ -1,4 +1,4 @@
-# Windows 11 Widgets Glossary
+﻿# Windows 11 Widgets Glossary
 
 ## General Windows 11 Widgets Terms
 
@@ -23,7 +23,7 @@
 
 | Term | Definition |
 |------|------------|
-| **LlmTokenWidget** | The overall project/solution name |
+| **TokenBudget** | The overall project/solution name |
 | **Claude Usage Widget** | Widget definition ID for Claude Code token tracking |
 | **Zai Usage Widget** | Widget definition ID for Z.ai/GLM token tracking |
 | **Copilot Usage Widget** | Widget definition ID for GitHub Copilot premium request tracking |

@@ -1,6 +1,6 @@
-<#
+﻿<#
 .SYNOPSIS
-    Rebuilds and deploys the LLM Token Widget to Windows 11 Widgets Board.
+    Rebuilds and deploys the Token Budget to Windows 11 Widgets Board.
 
 .DESCRIPTION
     This script performs a full rebuild and deployment cycle:
@@ -23,15 +23,27 @@
     After deployment, press Win+W to open Widgets Board and add widgets.
 #>
 
-Write-Host "=== Rebuild and Deploy LLM Token Widget ===" -ForegroundColor Cyan
+Write-Host "=== Rebuild and Deploy Token Budget ===" -ForegroundColor Cyan
 
-# Increment version number
+# Increment version number and sync Add Widget display name
 Write-Host "Incrementing version..." -ForegroundColor Yellow
-& "$PSScriptRoot\increment-version.ps1"
+$manifestPath = "$PSScriptRoot\packaging\TokenBudget.Package\Package.appxmanifest"
+$content = Get-Content $manifestPath -Raw
+if ($content -match '<Identity[^>]+Version="(\d+)\.(\d+)\.(\d+)\.(\d+)"') {
+    $major = [int]$matches[1]; $minor = [int]$matches[2]; $build = [int]$matches[3] + 1; $revision = [int]$matches[4]
+    $newVersion = "$major.$minor.$build.$revision"
+    $content = $content -replace '<Identity([^>]+)Version="\d+\.\d+\.\d+\.\d+"', "<Identity`$1Version=""$newVersion"""
+    $content = $content -replace '(DisplayName="Token Budget) v\d+(")', "`$1 v$build`$2"
+    Set-Content -Path $manifestPath -Value $content -NoNewline
+    Write-Host "Version updated to $newVersion, display name: Token Budget v$build" -ForegroundColor Green
+} else {
+    Write-Host "ERROR: Could not find version in manifest" -ForegroundColor Red
+    exit 1
+}
 
 # Unregister old package first (prevents auto-restart)
 Write-Host "Unregistering old package..." -ForegroundColor Yellow
-$oldPkg = Get-AppxPackage | Where-Object { $_.Name -eq "LlmTokenWidget" }
+$oldPkg = Get-AppxPackage | Where-Object { $_.Name -eq "TokenBudget" }
 if ($oldPkg) {
     Remove-AppxPackage -Package $oldPkg.PackageFullName
     Write-Host "Old package unregistered" -ForegroundColor Green
@@ -39,7 +51,7 @@ if ($oldPkg) {
 
 # Kill widget provider, WidgetService, and WidgetBoard so cached metadata is cleared
 Write-Host "Stopping widget processes..." -ForegroundColor Yellow
-foreach ($procName in @("LlmTokenWidget.App", "WidgetService", "WidgetBoard")) {
+foreach ($procName in @("TokenBudget.App", "WidgetService", "WidgetBoard")) {
     $maxAttempts = 5
     $attempt = 0
     while ($attempt -lt $maxAttempts) {
@@ -54,7 +66,7 @@ foreach ($procName in @("LlmTokenWidget.App", "WidgetService", "WidgetBoard")) {
     }
 }
 
-$remaining = Get-Process -Name "LlmTokenWidget.App" -ErrorAction SilentlyContinue
+$remaining = Get-Process -Name "TokenBudget.App" -ErrorAction SilentlyContinue
 if ($remaining) {
     Write-Host "WARNING: Could not stop all widget processes. Build may fail." -ForegroundColor Yellow
 } else {
@@ -88,14 +100,14 @@ Write-Host "Using Visual Studio at: $devenv" -ForegroundColor Green
 
 # Rebuild
 Write-Host "`nRebuilding solution..." -ForegroundColor Yellow
-& $devenv LlmTokenWidget.sln /Rebuild "Debug|x64"
+& $devenv TokenBudget.sln /Rebuild "Debug|x64"
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Build succeeded!" -ForegroundColor Green
 
     # Register the app package
     Write-Host "`nRegistering package..." -ForegroundColor Yellow
-    $manifestPath = "packaging\LlmTokenWidget.Package\bin\x64\Debug\AppxManifest.xml"
+    $manifestPath = "packaging\TokenBudget.Package\bin\x64\Debug\AppxManifest.xml"
 
     if (Test-Path $manifestPath) {
         Add-AppxPackage -Path $manifestPath -Register

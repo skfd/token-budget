@@ -1,11 +1,11 @@
-$content = Get-Content "$env:TEMP\gradient_results.txt" -Raw
+﻿$content = Get-Content "$env:TEMP\gradient_results.txt" -Raw
 $map = @{}
 foreach ($line in $content.Trim().Split("`n")) {
     $parts = $line.Split('=', 2)
     $map[$parts[0]] = $parts[1].Trim()
 }
 
-$cardsDir = "$PSScriptRoot\src\LlmTokenWidget.App\AdaptiveCards"
+$cardsDir = "$PSScriptRoot\src\TokenBudget.App\AdaptiveCards"
 
 $providerMap = @{
     'claude'  = $map['CLAUDE']
