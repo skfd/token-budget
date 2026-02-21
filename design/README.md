@@ -48,7 +48,7 @@ When you:
 - **Change what a variable contains** (e.g. format change) → update the sample
   value so it still reflects realistic output.
 
-The `barColor`, `sevenDayBarColor`, `weeklyBarColor`, and `monthlyBarColor` values
-use Adaptive Card ProgressBar color names (`Accent`, `Warning`, `Attention`) computed
-by `GetStatusVisuals()` in `WidgetProvider.cs`. The samples here use `Accent`
+The `barStyle`, `sevenDayBarStyle`, `weeklyBarStyle`, and `monthlyBarStyle` values
+use Adaptive Card Column style names (`accent`, `warning`, `attention`) computed
+by `GetStatusVisuals()` in `WidgetProvider.cs`. The samples here use `accent`
 (normal utilization) so they render with the default accent color in the designer.

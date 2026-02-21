@@ -1,7 +1,7 @@
 {
     "type": "AdaptiveCard",
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-    "version": "1.6",
+    "version": "1.5",
     "body": [
         {
             "type": "TextBlock",
@@ -18,13 +18,26 @@
                     "width": "stretch",
                     "items": [
                         {
-                            "type": "ProgressBar",
-                            "value": "${percentValue}",
-                            "max": 100,
-                            "color": "${barColor}"
+                            "type": "ColumnSet",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${percentValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "${barStyle}"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${percentRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
                         }
-                    ],
-                    "verticalContentAlignment": "center"
+                    ]
                 },
                 {
                     "type": "Column",

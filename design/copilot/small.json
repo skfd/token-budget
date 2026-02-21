@@ -1,7 +1,9 @@
 {
-    "barColor": "Accent",
+    "barStyle": "accent",
     "statusColor": "accent",
     "percentText": "16%",
     "percentValue": 16,
+    "percentValueClamped": 16,
+    "percentRemaining": 84,
     "resetTime": "Resets in 10 days"
 }

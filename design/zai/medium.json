@@ -1,13 +1,17 @@
 {
     "providerName": "Z.ai",
-    "barColor": "Accent",
+    "barStyle": "accent",
     "statusColor": "accent",
     "percentText": "57%",
     "percentValue": 57,
+    "percentValueClamped": 57,
+    "percentRemaining": 43,
     "resetTime": "Resets in 2 hr 15 min",
-    "weeklyBarColor": "Accent",
+    "weeklyBarStyle": "accent",
     "weeklyStatusColor": "accent",
     "weeklyPercent": "22%",
     "weeklyValue": 22,
+    "weeklyValueClamped": 22,
+    "weeklyRemaining": 78,
     "weeklyReset": "Resets Mon Feb 23, 12:00 AM"
 }
