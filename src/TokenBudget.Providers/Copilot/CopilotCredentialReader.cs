@@ -54,10 +54,23 @@ public static class CopilotCredentialReader
             };
 
             proc.Start();
+            
+            // Timeout after 2 seconds to prevent hanging Store reviewer environments
+            // if gh CLI acts unexpectedly or prompts for login.
+            if (!proc.WaitForExit(2000))
+            {
+                proc.Kill();
+                return null;
+            }
+
             var token = proc.StandardOutput.ReadToEnd().Trim();
-            proc.WaitForExit();
 
             return proc.ExitCode == 0 && !string.IsNullOrEmpty(token) ? token : null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // gh CLI not installed or not in PATH, completely normal
+            return null;
         }
         catch (Exception ex)
         {
