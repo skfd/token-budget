@@ -22,7 +22,7 @@ namespace TokenBudget.Providers.ClaudeCode;
 /// </summary>
 public sealed class OAuthUsageClient
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     private static readonly IReadOnlyDictionary<string, string> ExtraHeaders = new Dictionary<string, string>
     {
@@ -54,9 +54,10 @@ public sealed class OAuthUsageClient
     /// </summary>
     public async Task<OAuthUsageData?> FetchAsync(CancellationToken ct = default)
     {
-        // Return memory cache if still fresh
-        if (_cached != null && DateTimeOffset.UtcNow - _cachedAt < CacheDuration)
-            return _cached;
+        // Return memory cache if still fresh (applies to both successful and failed fetches,
+        // so failures also back off for CacheDuration instead of retrying every 5 seconds)
+        if (DateTimeOffset.UtcNow - _cachedAt < CacheDuration)
+            return SimulateResets(_cached);
 
         try
         {
@@ -64,6 +65,7 @@ public sealed class OAuthUsageClient
             if (string.IsNullOrEmpty(token))
             {
                 System.Diagnostics.Debug.WriteLine("OAuthUsageClient: No access token available");
+                _cachedAt = DateTimeOffset.UtcNow;
                 return SimulateResets(_cached);
             }
 
@@ -72,6 +74,7 @@ public sealed class OAuthUsageClient
             {
                 System.Diagnostics.Debug.WriteLine(
                     $"OAuthUsageClient: API returned {(int)response.StatusCode} {response.StatusCode}");
+                _cachedAt = DateTimeOffset.UtcNow;
                 return SimulateResets(_cached);
             }
 
@@ -79,7 +82,10 @@ public sealed class OAuthUsageClient
             var apiResponse = JsonSerializer.Deserialize<ApiUsageResponse>(json, JsonOptions);
 
             if (apiResponse == null)
+            {
+                _cachedAt = DateTimeOffset.UtcNow;
                 return SimulateResets(_cached);
+            }
 
             _cached = new OAuthUsageData(
                 FiveHour: MapLimit(apiResponse.FiveHour),
@@ -97,6 +103,7 @@ public sealed class OAuthUsageClient
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             System.Diagnostics.Debug.WriteLine($"OAuthUsageClient: {ex.Message}");
+            _cachedAt = DateTimeOffset.UtcNow;
             return SimulateResets(_cached);
         }
     }
