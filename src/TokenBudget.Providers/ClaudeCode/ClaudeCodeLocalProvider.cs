@@ -68,8 +68,10 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
             totalTokens = new TokenBreakdown(0, 0, 0, 0);
         }
 
-        // Fetch rate-limit data from OAuth API
-        var oauthUsage = await _usageClient.FetchAsync(ct);
+        // Prefer rate limits from widget-data.json (Claude Code v2.1+ writes them directly).
+        // Fall back to the OAuth API only if the local file doesn't expose them.
+        var oauthUsage = _statusReader.ReadRateLimits()
+                         ?? await _usageClient.FetchAsync(ct);
 
         var snapshot = new UsageSnapshot(
             TotalTokens: totalTokens,
