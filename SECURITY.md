@@ -88,10 +88,9 @@ If the auth file is missing or the key is invalid, the quota API call silently f
 
 | What | Path / URL | Purpose |
 |---|---|---|
-| User identity | `GET https://api.github.com/user` | Fetches authenticated username (cached per session) |
-| Billing API | `GET https://api.github.com/users/{user}/settings/billing/premium_request/usage` | Premium request usage this billing cycle |
+| Copilot quota | `GET https://api.github.com/copilot_internal/user` | Premium request quota/usage for the authenticated user |
 
-Both requests use `Authorization: Bearer <token>`.
+The request uses `Authorization: Bearer <token>`.
 
 ### Required permissions
 
@@ -159,14 +158,13 @@ If no JSONL files exist under `~/.qwen/projects/`, the widget shows no data. The
 
 All outbound HTTP requests are funneled through a single class: `HttpGateway` (`src/TokenBudget.Core/HttpGateway.cs`). No other code in the project creates `HttpClient` instances or sends HTTP requests directly.
 
-The gateway maintains a hardcoded allowlist of exactly 4 endpoints:
+The gateway maintains a hardcoded allowlist of exactly 3 endpoints:
 
 | Endpoint | URL |
 |---|---|
 | `AnthropicOAuthUsage` | `https://api.anthropic.com/api/oauth/usage` |
 | `ZaiQuotaLimit` | `https://api.z.ai/api/monitor/usage/quota/limit` |
-| `GitHubUser` | `https://api.github.com/user` |
-| `GitHubCopilotUsage` | `https://api.github.com/users/{user}/settings/billing/premium_request/usage` |
+| `GitHubCopilotUsage` | `https://api.github.com/copilot_internal/user` |
 
 The Qwen Code provider makes no network requests — it is entirely local.
 

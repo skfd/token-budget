@@ -52,6 +52,9 @@ public sealed class CopilotProvider : ILlmProvider, IDisposable
     /// <summary>Total premium requests used (from last API fetch).</summary>
     public long LastTotalUsed => _usageClient.LastTotalUsed;
 
+    /// <summary>Monthly premium request quota for the current plan (from last API fetch).</summary>
+    public long QuotaLimit => _usageClient.QuotaLimit;
+
     public void Dispose()
     {
     }

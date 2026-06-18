@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using TokenBudget.Core;
@@ -9,12 +8,11 @@ using TokenBudget.Core;
 namespace TokenBudget.Providers.Copilot;
 
 /// <summary>
-/// Calls the GitHub billing API to retrieve Copilot premium request usage.
+/// Calls the GitHub Copilot quota endpoint to retrieve premium request usage.
 /// Caches the result for 30 seconds to avoid excessive API calls.
 /// </summary>
 public sealed class CopilotUsageClient
 {
-    private const int ProQuotaLimit = 300;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
     private static readonly IReadOnlyDictionary<string, string> GitHubHeaders = new Dictionary<string, string>
@@ -24,7 +22,6 @@ public sealed class CopilotUsageClient
     };
 
     private readonly HttpGateway _gateway;
-    private string? _cachedUsername;
     private OAuthUsageData? _cached;
     private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
 
@@ -47,17 +44,8 @@ public sealed class CopilotUsageClient
                 return null;
             }
 
-            // Fetch username (cached indefinitely per session)
-            if (_cachedUsername == null)
-            {
-                _cachedUsername = await FetchUsernameAsync(token, ct);
-                if (_cachedUsername == null)
-                    return null;
-            }
-
-            // Fetch premium request usage
             var response = await _gateway.SendAsync(ApiEndpoint.GitHubCopilotUsage, token, ct,
-                urlArg: _cachedUsername, extraHeaders: GitHubHeaders);
+                extraHeaders: GitHubHeaders);
             if (!response.IsSuccessStatusCode)
             {
                 System.Diagnostics.Debug.WriteLine(
@@ -66,24 +54,20 @@ public sealed class CopilotUsageClient
             }
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            var apiResponse = JsonSerializer.Deserialize<ApiBillingResponse>(json, JsonOptions);
+            var apiResponse = JsonSerializer.Deserialize<ApiCopilotUser>(json, JsonOptions);
 
-            if (apiResponse?.UsageItems == null)
+            var premium = apiResponse?.QuotaSnapshots?.PremiumInteractions;
+            if (premium == null)
                 return null;
 
-            // Sum all premium requests across models/SKUs
-            double totalUsed = 0;
-            foreach (var item in apiResponse.UsageItems)
-                totalUsed += item.GrossQuantity;
+            QuotaLimit = (long)Math.Round(premium.Entitlement);
+            // "used" = entitlement minus what remains in the rolling monthly quota
+            LastTotalUsed = (long)Math.Round(Math.Max(0, premium.Entitlement - premium.QuotaRemaining));
 
-            LastTotalUsed = (long)Math.Round(totalUsed);
+            // API reports remaining %; widget shows utilization (% used)
+            var utilization = premium.Unlimited ? 0 : Math.Max(0, 100 - premium.PercentRemaining);
 
-            // Calculate utilization against Pro quota (300/month)
-            var utilization = ProQuotaLimit > 0 ? (double)totalUsed / ProQuotaLimit * 100 : 0;
-
-            // Reset at 1st of next month UTC
-            var now = DateTimeOffset.UtcNow;
-            var nextReset = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
+            var nextReset = apiResponse!.QuotaResetDateUtc ?? FirstOfNextMonthUtc();
 
             _cached = new OAuthUsageData(
                 FiveHour: new RateLimitInfo(utilization, nextReset),
@@ -104,54 +88,43 @@ public sealed class CopilotUsageClient
         }
     }
 
-    /// <summary>Total premium requests used this billing cycle.</summary>
+    /// <summary>Premium requests used this billing cycle.</summary>
     public long LastTotalUsed { get; private set; }
 
-    private async Task<string?> FetchUsernameAsync(string token, CancellationToken ct)
+    /// <summary>Monthly premium request entitlement for the current plan.</summary>
+    public long QuotaLimit { get; private set; }
+
+    private static DateTimeOffset FirstOfNextMonthUtc()
     {
-        try
-        {
-            var response = await _gateway.SendAsync(ApiEndpoint.GitHubUser, token, ct, extraHeaders: GitHubHeaders);
-            if (!response.IsSuccessStatusCode)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"CopilotUsageClient: /user returned {(int)response.StatusCode}");
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(json);
-
-            if (doc.RootElement.TryGetProperty("login", out var login))
-                return login.GetString();
-
-            return null;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            System.Diagnostics.Debug.WriteLine($"CopilotUsageClient: username fetch failed: {ex.Message}");
-            return null;
-        }
+        var now = DateTimeOffset.UtcNow;
+        return new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(1);
     }
 
     #region JSON deserialization models
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true
     };
 
-    private sealed class ApiBillingResponse
+    private sealed class ApiCopilotUser
     {
-        public ApiBillingItem[]? UsageItems { get; set; }
+        public DateTimeOffset? QuotaResetDateUtc { get; set; }
+        public ApiQuotaSnapshots? QuotaSnapshots { get; set; }
     }
 
-    private sealed class ApiBillingItem
+    private sealed class ApiQuotaSnapshots
     {
-        public string Date { get; set; } = "";
-        public double GrossQuantity { get; set; }
-        public string Sku { get; set; } = "";
+        public ApiQuota? PremiumInteractions { get; set; }
+    }
+
+    private sealed class ApiQuota
+    {
+        public double Entitlement { get; set; }
+        public double QuotaRemaining { get; set; }
+        public double PercentRemaining { get; set; }
+        public bool Unlimited { get; set; }
     }
 
     #endregion

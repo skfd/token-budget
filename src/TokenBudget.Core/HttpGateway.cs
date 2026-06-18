@@ -11,7 +11,6 @@ public enum ApiEndpoint
 {
     AnthropicOAuthUsage,
     ZaiQuotaLimit,
-    GitHubUser,
     GitHubCopilotUsage
 }
 
@@ -21,8 +20,7 @@ public sealed class HttpGateway : IDisposable
     {
         [ApiEndpoint.AnthropicOAuthUsage] = "https://api.anthropic.com/api/oauth/usage",
         [ApiEndpoint.ZaiQuotaLimit] = "https://api.z.ai/api/monitor/usage/quota/limit",
-        [ApiEndpoint.GitHubUser] = "https://api.github.com/user",
-        [ApiEndpoint.GitHubCopilotUsage] = "https://api.github.com/users/{0}/settings/billing/premium_request/usage",
+        [ApiEndpoint.GitHubCopilotUsage] = "https://api.github.com/copilot_internal/user",
     };
 
     private readonly HttpClient _http = new();

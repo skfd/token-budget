@@ -512,12 +512,18 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
 
         var (barStyle, statusColor) = GetStatusVisuals(utilization, monthly != null);
 
-        // Get total used from provider
+        // Get total used and plan quota from provider
         long totalUsed = 0;
+        long quotaLimit = 0;
         if (_providers.TryGetValue(CopilotWidgetId, out var provider) && provider is CopilotProvider cp)
+        {
             totalUsed = cp.LastTotalUsed;
+            quotaLimit = cp.QuotaLimit;
+        }
 
-        var usageText = $"{totalUsed} / 300 premium requests";
+        var usageText = quotaLimit > 0
+            ? $"{totalUsed} / {quotaLimit} premium requests"
+            : $"{totalUsed} premium requests";
 
         // Reset countdown
         var resetText = "";

@@ -247,26 +247,36 @@ The token needs `user` scope (or `manage_billing:copilot`).
 - Provider first attempts to read token via `gh auth token` command
 - Falls back to manual config file if gh CLI unavailable
 
-**API endpoints**:
-- `GET https://api.github.com/user` — fetches authenticated username (cached per session)
-- `GET https://api.github.com/users/{username}/settings/billing/premium_request/usage` — premium request usage
+**API endpoint**:
+- `GET https://api.github.com/copilot_internal/user` — Copilot plan + quota snapshots
 
-**Usage response** (usageItems array):
+**Note**: GitHub deprecated the old `settings/billing/premium_request/usage` endpoint
+(it now returns an empty `usageItems` array) when Copilot moved to a credits/quota
+billing model. The widget now reads the `copilot_internal/user` quota snapshot instead.
+
+**Usage response** (relevant fields):
 ```json
 {
-  "usageItems": [
-    { "date": "2026-02-01", "grossQuantity": 5.0, "sku": "Copilot Premium Request" }
-  ]
+  "copilot_plan": "individual",
+  "quota_reset_date_utc": "2026-07-01T00:00:00.000Z",
+  "quota_snapshots": {
+    "premium_interactions": {
+      "entitlement": 1500,
+      "quota_remaining": 1421.3,
+      "percent_remaining": 94.7,
+      "unlimited": false
+    }
+  }
 }
 ```
 
-**Important**: API returns `grossQuantity` as decimal (e.g., 27.0) in camelCase, not snake_case.
-
 **Mapping to widget**:
-- Sum `grossQuantity` across all items = total premium requests used
-- Quota: hardcoded 300 (Pro plan)
-- Reset: 1st of next month at 00:00 UTC (computed, not from API)
+- `entitlement` = monthly quota (read dynamically per plan, no longer hardcoded 300)
+- used = `entitlement - quota_remaining`
+- utilization % = `100 - percent_remaining`
+- Reset: `quota_reset_date_utc` (from API; falls back to 1st of next month UTC)
 - Polling: 60 seconds (API-only, no local files)
+- `unlimited: true` quotas (e.g. completions/chat on some plans) render as 0% used
 
 ### Qwen Code Provider (Local Data)
 
