@@ -99,15 +99,19 @@ public sealed class StatuslineReader
     /// <summary>
     /// Reads rate-limit data from the same widget-data.json file. Claude Code v2.1+
     /// embeds five_hour and seven_day usage directly, so we can avoid the OAuth API.
-    /// Returns null if the file is missing/stale or the rate_limits block is absent.
+    ///
+    /// Unlike <see cref="Read"/>, this does NOT apply a file-age guard: rate-limit
+    /// windows stay valid until their own resets_at, regardless of whether a Claude
+    /// Code session is currently active. Windows whose reset has already passed are
+    /// treated as reset to zero (see <see cref="ParseLimit"/>). This keeps the
+    /// rate-limit bars alive between sessions and avoids falling back to the OAuth
+    /// API (which serves stale disk-cached overage data when its token has expired).
+    ///
+    /// Returns null if the file is missing or the rate_limits block is absent.
     /// </summary>
     public OAuthUsageData? ReadRateLimits()
     {
         if (!File.Exists(_statusFilePath))
-            return null;
-
-        var lastWrite = File.GetLastWriteTimeUtc(_statusFilePath);
-        if (DateTime.UtcNow - lastWrite > TimeSpan.FromMinutes(5))
             return null;
 
         try
@@ -155,6 +159,13 @@ public sealed class StatuslineReader
         DateTimeOffset? resets = null;
         if (entry.TryGetProperty("resets_at", out var r) && r.ValueKind == JsonValueKind.Number)
             resets = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64());
+
+        // The file may be older than the live-data guard allows, but a rate-limit
+        // window stays valid until its own reset time. If that reset has already
+        // passed, the window has rolled over, so report zero rather than a stale
+        // high percentage. Mirrors OAuthUsageClient.SimulateResets.
+        if (resets != null && DateTimeOffset.UtcNow >= resets.Value)
+            return new RateLimitInfo(0, null);
 
         return new RateLimitInfo(pct, resets);
     }
