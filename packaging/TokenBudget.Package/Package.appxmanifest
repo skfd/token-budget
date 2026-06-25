@@ -8,7 +8,7 @@
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap uap3 mp rescap com desktop">
 
-  <Identity Name="TokenBudget" Publisher="CN=TestCert" Version="1.0.56.0" />
+  <Identity Name="TokenBudget" Publisher="CN=TestCert" Version="1.0.59.0" />
 
   <mp:PhoneIdentity PhoneProductId="9F910C81-08A4-461F-93A6-96809C70A95D" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
@@ -48,7 +48,7 @@
 
         <!-- Widget Registration -->
         <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Token Budget v56" Id="WidgetProvider" PublicFolder="Public">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Token Budget v59" Id="WidgetProvider" PublicFolder="Public">
             <uap3:Properties>
               <WidgetProvider>
                 <ProviderIcons>

@@ -68,10 +68,17 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
             totalTokens = new TokenBreakdown(0, 0, 0, 0);
         }
 
-        // Prefer rate limits from widget-data.json (Claude Code v2.1+ writes them directly).
-        // Fall back to the OAuth API only if the local file doesn't expose them.
-        var oauthUsage = _statusReader.ReadRateLimits()
-                         ?? await _usageClient.FetchAsync(ct);
+        // Prefer rate limits from widget-data.json (Claude Code v2.1+ writes them directly,
+        // and they stay fresh between sessions). But widget-data.json carries only the
+        // five_hour/seven_day windows, not overage/extra-credit data, so always layer the
+        // OAuth API's ExtraUsage on top. FetchAsync is cached for 5 min, so this adds a
+        // real network call at most once per cache window.
+        var localLimits = _statusReader.ReadRateLimits();
+        var apiUsage = await _usageClient.FetchAsync(ct);
+
+        var oauthUsage = localLimits != null
+            ? localLimits with { ExtraUsage = apiUsage?.ExtraUsage }
+            : apiUsage;
 
         var snapshot = new UsageSnapshot(
             TotalTokens: totalTokens,
