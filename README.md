@@ -30,6 +30,14 @@ Each widget shows a progress bar, reset time, and usage percentage. The bar turn
 4. Click **+** and search for "Claude", "Z.ai", "Copilot", or "Qwen"
 5. Add whichever widgets you want
 
+> **Turn off Smart App Control before installing.** The widget isn't signed with a
+> Microsoft-recognized certificate, so if Smart App Control is on you'll hit
+> *"Smart App Control has blocked part of this app"* and the widget won't load data.
+> Disable it under **Windows Security → App & browser control → Smart App Control
+> settings → Off**, then install. Smart App Control does not trust self-signed
+> packages, so there's no per-app exception — it has to be off. Note: re-enabling it
+> later requires resetting Windows.
+
 ## Provider setup
 
 ### Claude Code
@@ -64,6 +72,9 @@ Widgets only update while the board is open. Open Win+W to refresh.
 
 **The widget disappeared / stopped working after a Windows update.**
 Reinstall the `.msix` package.
+
+**"Smart App Control has blocked part of this app"**
+The package isn't signed with a Microsoft-recognized certificate. Turn Smart App Control off (**Windows Security → App & browser control → Smart App Control settings → Off**), then reinstall. Re-enabling it later requires a Windows reset.
 
 **Can I add multiple copies of the same widget?**
 No, each widget is unique per service.
