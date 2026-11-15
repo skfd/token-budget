@@ -40,7 +40,36 @@ public record OAuthUsageData(
     RateLimitInfo? SevenDaySonnet,
     ExtraUsageInfo? ExtraUsage,
     DateTimeOffset FetchedAt,
-    RateLimitInfo? Monthly = null);
+    RateLimitInfo? Monthly = null,
+    IReadOnlyList<ScopedLimitInfo>? ScopedLimits = null,
+    CreditInfo? Credits = null,
+    IReadOnlyList<UsageShare>? WeeklyBreakdown = null);
+
+/// <summary>
+/// A weekly limit that applies to one model or surface only (e.g. "Fable").
+/// </summary>
+public record ScopedLimitInfo(
+    string Label,
+    double Utilization,
+    DateTimeOffset? ResetsAt);
+
+/// <summary>
+/// Usage credits that cover use past plan limits. Amounts are in major units
+/// of <see cref="Currency"/> (25.00, not 2500).
+/// </summary>
+public record CreditInfo(
+    bool Enabled,
+    double Used,
+    double Limit,
+    string Currency,
+    string? DisabledReason);
+
+/// <summary>
+/// One row of the weekly usage breakdown by product (Claude Code, Chats, Cowork...).
+/// </summary>
+public record UsageShare(
+    string Label,
+    double Percent);
 
 /// <summary>
 /// Aggregated token usage snapshot from a provider.
@@ -73,5 +102,7 @@ public record StatuslineData(
     long? TotalOutputTokens,
     long? CacheCreationTokens,
     long? CacheReadTokens,
-    DateTimeOffset CapturedAt);
+    DateTimeOffset CapturedAt,
+    string? SessionTitle = null,
+    string? SessionId = null);
 

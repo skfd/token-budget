@@ -15,6 +15,7 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 {
 
     private readonly StatuslineReader _statusReader;
+    private readonly TranscriptReader _transcriptReader = new();
     private readonly OAuthUsageClient _usageClient;
 
     private FileSystemWatcher? _statusWatcher;
@@ -50,23 +51,11 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
 
     public async Task<UsageSnapshot> FetchUsageAsync(CancellationToken ct)
     {
-        // Read live status from statusline bridge
-        var liveStatus = _statusReader.Read();
+        var liveStatus = ReadLiveSession();
 
-        TokenBreakdown totalTokens;
-
-        if (liveStatus != null && liveStatus.TotalInputTokens.HasValue && liveStatus.TotalOutputTokens.HasValue)
-        {
-            totalTokens = new TokenBreakdown(
-                liveStatus.TotalInputTokens.Value,
-                liveStatus.TotalOutputTokens.Value,
-                liveStatus.CacheCreationTokens ?? 0, 
-                liveStatus.CacheReadTokens ?? 0);
-        }
-        else
-        {
-            totalTokens = new TokenBreakdown(0, 0, 0, 0);
-        }
+        TokenBreakdown totalTokens = liveStatus is { TotalInputTokens: { } inTok, TotalOutputTokens: { } outTok }
+            ? new TokenBreakdown(inTok, outTok, liveStatus.CacheCreationTokens ?? 0, liveStatus.CacheReadTokens ?? 0)
+            : new TokenBreakdown(0, 0, 0, 0);
 
         // Rate limits come from two places: widget-data.json (written by the CLI
         // statusline only — the desktop app never writes it, and newer CLI builds
@@ -90,6 +79,27 @@ public sealed class ClaudeCodeLocalProvider : ILlmProvider, IDisposable
     }
 
 
+
+    /// <summary>
+    /// The current session comes from its transcript, which every surface writes.
+    /// Cost and context % exist only in the CLI statusline's widget-data.json, so
+    /// they are taken from it only when it describes that same session.
+    /// </summary>
+    private StatuslineData? ReadLiveSession()
+    {
+        var transcript = _transcriptReader.Read();
+        var statusline = _statusReader.Read();
+        if (transcript == null) return statusline;
+        if (statusline == null || !string.Equals(statusline.SessionId, transcript.SessionId, StringComparison.OrdinalIgnoreCase))
+            return transcript;
+
+        return transcript with
+        {
+            CostUsd = statusline.CostUsd,
+            ContextWindowUsedPercent = statusline.ContextWindowUsedPercent is > 0 ? statusline.ContextWindowUsedPercent : null,
+            SessionTitle = transcript.SessionTitle ?? statusline.SessionTitle,
+        };
+    }
 
     internal static OAuthUsageData? MergeLimits(OAuthUsageData? local, OAuthUsageData? api)
     {

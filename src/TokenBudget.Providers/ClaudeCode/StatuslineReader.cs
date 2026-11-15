@@ -86,7 +86,9 @@ public sealed class StatuslineReader
                 TotalOutputTokens: outputTokens,
                 CacheCreationTokens: cacheCreation,
                 CacheReadTokens: cacheRead,
-                CapturedAt: lastWrite
+                CapturedAt: lastWrite,
+                SessionTitle: root.TryGetProperty("session_name", out var sn) && sn.ValueKind == JsonValueKind.String ? sn.GetString() : null,
+                SessionId: root.TryGetProperty("session_id", out var sid) && sid.ValueKind == JsonValueKind.String ? sid.GetString() : null
             );
         }
         catch (Exception ex)

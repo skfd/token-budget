@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -79,23 +80,15 @@ public sealed class OAuthUsageClient
             }
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            var apiResponse = JsonSerializer.Deserialize<ApiUsageResponse>(json, JsonOptions);
+            var parsed = Parse(json, DateTimeOffset.UtcNow);
 
-            if (apiResponse == null)
+            if (parsed == null)
             {
                 _cachedAt = DateTimeOffset.UtcNow;
                 return SimulateResets(_cached);
             }
 
-            _cached = new OAuthUsageData(
-                FiveHour: MapLimit(apiResponse.FiveHour),
-                SevenDay: MapLimit(apiResponse.SevenDay),
-                SevenDayOAuthApps: MapLimit(apiResponse.SevenDayOAuthApps),
-                SevenDayOpus: MapLimit(apiResponse.SevenDayOpus),
-                SevenDaySonnet: MapLimit(apiResponse.SevenDaySonnet),
-                ExtraUsage: MapExtra(apiResponse.ExtraUsage),
-                FetchedAt: DateTimeOffset.UtcNow);
-
+            _cached = parsed;
             _cachedAt = DateTimeOffset.UtcNow;
             SaveDiskCache(_cached);
             return _cached;
@@ -107,6 +100,120 @@ public sealed class OAuthUsageClient
             return SimulateResets(_cached);
         }
     }
+
+    /// <summary>
+    /// Parses an /api/oauth/usage response. The newer <c>limits[]</c> and
+    /// <c>spend</c> blocks are preferred; the legacy <c>five_hour</c>/<c>seven_day</c>
+    /// and <c>extra_usage</c> fields are the fallback. Codenamed keys are ignored.
+    /// </summary>
+    public static OAuthUsageData? Parse(string json, DateTimeOffset fetchedAt)
+    {
+        var api = JsonSerializer.Deserialize<ApiUsageResponse>(json, JsonOptions);
+        if (api == null) return null;
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        RateLimitInfo? session = null, weekly = null;
+        var scoped = new List<ScopedLimitInfo>();
+        if (root.TryGetProperty("limits", out var limits) && limits.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var l in limits.EnumerateArray())
+            {
+                var kind = Str(l, "kind");
+                if (!l.TryGetProperty("percent", out var pct) || pct.ValueKind != JsonValueKind.Number) continue;
+                var info = new RateLimitInfo(pct.GetDouble(), Date(l, "resets_at"));
+                switch (kind)
+                {
+                    case "session": session = info; break;
+                    case "weekly_all": weekly = info; break;
+                    case "weekly_scoped":
+                        scoped.Add(new ScopedLimitInfo(ScopeLabel(l) ?? "Scoped", info.Utilization, info.ResetsAt));
+                        break;
+                }
+            }
+        }
+
+        return new OAuthUsageData(
+            FiveHour: session ?? MapLimit(api.FiveHour),
+            SevenDay: weekly ?? MapLimit(api.SevenDay),
+            SevenDayOAuthApps: MapLimit(api.SevenDayOAuthApps),
+            SevenDayOpus: MapLimit(api.SevenDayOpus),
+            SevenDaySonnet: MapLimit(api.SevenDaySonnet),
+            ExtraUsage: MapExtra(api.ExtraUsage),
+            FetchedAt: fetchedAt,
+            ScopedLimits: scoped.Count > 0 ? scoped : null,
+            Credits: ParseCredits(root),
+            WeeklyBreakdown: ParseBreakdown(root));
+    }
+
+    private static CreditInfo? ParseCredits(JsonElement root)
+    {
+        if (root.TryGetProperty("spend", out var spend) && spend.ValueKind == JsonValueKind.Object)
+        {
+            var used = Money(spend, "used");
+            var limit = Money(spend, "limit");
+            if (limit != null)
+            {
+                var enabled = spend.TryGetProperty("enabled", out var e) && e.ValueKind == JsonValueKind.True;
+                return new CreditInfo(enabled, used?.Amount ?? 0, limit.Value.Amount, limit.Value.Currency,
+                    Str(spend, "disabled_reason"));
+            }
+        }
+
+        // Legacy: extra_usage amounts are minor units with an optional currency.
+        if (root.TryGetProperty("extra_usage", out var x) && x.ValueKind == JsonValueKind.Object &&
+            x.TryGetProperty("monthly_limit", out var ml) && ml.ValueKind == JsonValueKind.Number)
+        {
+            var places = x.TryGetProperty("decimal_places", out var dp) && dp.ValueKind == JsonValueKind.Number ? dp.GetInt32() : 2;
+            var scale = Math.Pow(10, places);
+            var used = x.TryGetProperty("used_credits", out var uc) && uc.ValueKind == JsonValueKind.Number ? uc.GetDouble() : 0;
+            var enabled = x.TryGetProperty("is_enabled", out var ie) && ie.ValueKind == JsonValueKind.True;
+            return new CreditInfo(enabled, used / scale, ml.GetDouble() / scale, Str(x, "currency") ?? "USD",
+                Str(x, "disabled_reason"));
+        }
+        return null;
+    }
+
+    private static (double Amount, string Currency)? Money(JsonElement parent, string name)
+    {
+        if (!parent.TryGetProperty(name, out var m) || m.ValueKind != JsonValueKind.Object) return null;
+        if (!m.TryGetProperty("amount_minor", out var a) || a.ValueKind != JsonValueKind.Number) return null;
+        var exp = m.TryGetProperty("exponent", out var e) && e.ValueKind == JsonValueKind.Number ? e.GetInt32() : 2;
+        return (a.GetDouble() / Math.Pow(10, exp), Str(m, "currency") ?? "USD");
+    }
+
+    private static IReadOnlyList<UsageShare>? ParseBreakdown(JsonElement root)
+    {
+        if (!root.TryGetProperty("seven_day_breakdown", out var b) || b.ValueKind != JsonValueKind.Object ||
+            !b.TryGetProperty("rows", out var rows) || rows.ValueKind != JsonValueKind.Array)
+            return null;
+        var list = new List<UsageShare>();
+        foreach (var r in rows.EnumerateArray())
+        {
+            if (!r.TryGetProperty("percent", out var p) || p.ValueKind != JsonValueKind.Number) continue;
+            list.Add(new UsageShare(Str(r, "display_name") ?? Str(r, "key") ?? "?", p.GetDouble()));
+        }
+        return list.Count > 0 ? list : null;
+    }
+
+    private static string? ScopeLabel(JsonElement limit)
+    {
+        if (!limit.TryGetProperty("scope", out var scope) || scope.ValueKind != JsonValueKind.Object) return null;
+        foreach (var key in new[] { "model", "surface" })
+        {
+            if (!scope.TryGetProperty(key, out var v)) continue;
+            if (v.ValueKind == JsonValueKind.String) return v.GetString();
+            if (v.ValueKind == JsonValueKind.Object) return Str(v, "display_name") ?? Str(v, "id");
+        }
+        return null;
+    }
+
+    private static string? Str(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static DateTimeOffset? Date(JsonElement e, string name) =>
+        Str(e, name) is { } s && DateTimeOffset.TryParse(s, out var d) ? d : null;
 
     /// <summary>
     /// If a cached limit's reset time has passed, zero out its utilization
@@ -123,6 +230,9 @@ public sealed class OAuthUsageClient
             SevenDayOAuthApps = ResetIfExpired(data.SevenDayOAuthApps, now),
             SevenDayOpus = ResetIfExpired(data.SevenDayOpus, now),
             SevenDaySonnet = ResetIfExpired(data.SevenDaySonnet, now),
+            ScopedLimits = data.ScopedLimits?
+                .Select(l => l.ResetsAt is { } r && now >= r ? l with { Utilization = 0, ResetsAt = null } : l)
+                .ToList(),
         };
     }
 
