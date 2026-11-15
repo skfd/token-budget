@@ -262,8 +262,8 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         if (credits != null)
         {
             creditsText = credits.Enabled
-                ? $"Usage credits: {credits.Used:F2} of {credits.Limit:F2} {credits.Currency}"
-                : $"Usage credits off{(credits.DisabledReason is { } why ? $" ({why.Replace('_', ' ')})" : "")}";
+                ? $"Credits {credits.Used:F2} / {credits.Limit:F2} {credits.Currency}"
+                : credits.DisabledReason == "out_of_credits" ? "No credits left" : "Credits off";
         }
         // The medium card has room for credits only when they are in play.
         var extraText = credits is { } c && (c.Enabled || c.Used > 0) ? creditsText : "";

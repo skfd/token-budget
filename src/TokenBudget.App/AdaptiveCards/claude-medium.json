@@ -10,19 +10,36 @@
             "size": "medium"
         },
         {
-            "type": "TextBlock",
-            "text": "Current session",
-            "weight": "bolder",
-            "size": "default",
-            "spacing": "small"
-        },
-        {
-            "type": "TextBlock",
-            "text": "${resetTime}",
-            "size": "small",
-            "weight": "lighter",
-            "isSubtle": true,
-            "spacing": "none"
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "Current session",
+                            "weight": "bolder",
+                            "size": "default",
+                            "isSubtle": false
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "verticalContentAlignment": "bottom",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${resetTime}",
+                            "size": "small",
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
         },
         {
             "type": "ColumnSet",
@@ -31,6 +48,7 @@
                 {
                     "type": "Column",
                     "width": "stretch",
+                    "verticalContentAlignment": "center",
                     "items": [
                         {
                             "type": "ColumnSet",
@@ -95,22 +113,20 @@
                                 }
                             ]
                         }
-                    ],
-                    "verticalContentAlignment": "center"
+                    ]
                 },
                 {
                     "type": "Column",
                     "width": "auto",
+                    "verticalContentAlignment": "center",
                     "items": [
                         {
                             "type": "TextBlock",
                             "text": "${percentText} used",
                             "size": "small",
-                            "weight": "lighter",
                             "color": "${statusColor}"
                         }
-                    ],
-                    "verticalContentAlignment": "center"
+                    ]
                 }
             ]
         },
@@ -119,124 +135,125 @@
             "text": "${extraUsage}",
             "size": "small",
             "isSubtle": true,
-            "spacing": "none",
+            "spacing": "small",
             "$when": "${extraUsage != ''}"
         },
         {
-            "type": "Container",
-            "spacing": "default",
-            "separator": true,
-            "items": [
+            "type": "ColumnSet",
+            "spacing": "medium",
+            "columns": [
                 {
-                    "type": "TextBlock",
-                    "text": "Weekly limits",
-                    "weight": "bolder",
-                    "size": "default",
-                    "spacing": "small"
-                },
-                {
-                    "type": "TextBlock",
-                    "text": "All models",
-                    "size": "small",
-                    "weight": "lighter",
-                    "isSubtle": true,
-                    "spacing": "none"
-                },
-                {
-                    "type": "TextBlock",
-                    "text": "${sevenDayReset}",
-                    "size": "small",
-                    "weight": "lighter",
-                    "isSubtle": true,
-                    "spacing": "none"
-                },
-                {
-                    "type": "ColumnSet",
-                    "spacing": "small",
-                    "columns": [
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
                         {
-                            "type": "Column",
-                            "width": "stretch",
-                            "items": [
+                            "type": "TextBlock",
+                            "text": "Weekly · all models",
+                            "weight": "bolder",
+                            "size": "default",
+                            "isSubtle": false
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "verticalContentAlignment": "bottom",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${sevenDayReset}",
+                            "size": "small",
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "verticalContentAlignment": "center",
+                    "items": [
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${sevenDayBarStyle == 'accent'}",
+                            "spacing": "none",
+                            "columns": [
                                 {
-                                    "type": "ColumnSet",
-                                    "$when": "${sevenDayBarStyle == 'accent'}",
-                                    "spacing": "none",
-                                    "columns": [
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayValueClamped}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "accent"
-                                        },
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayRemaining}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "emphasis"
-                                        }
-                                    ]
+                                    "type": "Column",
+                                    "width": "${sevenDayValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "accent"
                                 },
                                 {
-                                    "type": "ColumnSet",
-                                    "$when": "${sevenDayBarStyle == 'warning'}",
-                                    "spacing": "none",
-                                    "columns": [
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayValueClamped}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "warning"
-                                        },
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayRemaining}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "emphasis"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "type": "ColumnSet",
-                                    "$when": "${sevenDayBarStyle == 'attention'}",
-                                    "spacing": "none",
-                                    "columns": [
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayValueClamped}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "attention"
-                                        },
-                                        {
-                                            "type": "Column",
-                                            "width": "${sevenDayRemaining}",
-                                            "items": [],
-                                            "minHeight": "4px",
-                                            "style": "emphasis"
-                                        }
-                                    ]
+                                    "type": "Column",
+                                    "width": "${sevenDayRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
                                 }
-                            ],
-                            "verticalContentAlignment": "center"
+                            ]
                         },
                         {
-                            "type": "Column",
-                            "width": "auto",
-                            "items": [
+                            "type": "ColumnSet",
+                            "$when": "${sevenDayBarStyle == 'warning'}",
+                            "spacing": "none",
+                            "columns": [
                                 {
-                                    "type": "TextBlock",
-                                    "text": "${sevenDayPercent} used",
-                                    "size": "small",
-                                    "weight": "lighter",
-                                    "color": "${sevenDayStatusColor}"
+                                    "type": "Column",
+                                    "width": "${sevenDayValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "warning"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${sevenDayRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
                                 }
-                            ],
-                            "verticalContentAlignment": "center"
+                            ]
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "$when": "${sevenDayBarStyle == 'attention'}",
+                            "spacing": "none",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "${sevenDayValueClamped}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "attention"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "${sevenDayRemaining}",
+                                    "items": [],
+                                    "minHeight": "4px",
+                                    "style": "emphasis"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "verticalContentAlignment": "center",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${sevenDayPercent} used",
+                            "size": "small",
+                            "color": "${sevenDayStatusColor}"
                         }
                     ]
                 }
