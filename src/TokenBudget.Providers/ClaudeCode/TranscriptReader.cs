@@ -29,6 +29,7 @@ public sealed class TranscriptReader
     private string? _model;
     private string? _title;
     private string? _sessionId;
+    private string? _project;
 
     private record struct Usage(long Input, long Output, long CacheWrite, long CacheRead);
 
@@ -78,7 +79,8 @@ public sealed class TranscriptReader
                 CacheCreationTokens: _last.Value.CacheWrite,
                 CacheReadTokens: _last.Value.CacheRead,
                 CapturedAt: new DateTimeOffset(newest.LastWriteTimeUtc, TimeSpan.Zero),
-                SessionTitle: _title,
+                // Untitled sessions (SDK, fresh CLI) fall back to the project folder.
+                SessionTitle: _title ?? _project,
                 SessionId: _sessionId);
         }
         catch (Exception ex)
@@ -112,6 +114,7 @@ public sealed class TranscriptReader
         _last = null;
         _model = null;
         _title = null;
+        _project = null;
         _sessionId = Path.GetFileNameWithoutExtension(path);
     }
 
@@ -162,6 +165,9 @@ public sealed class TranscriptReader
             }
 
             if (type != "assistant") return;
+            if (root.TryGetProperty("cwd", out var cwd) && cwd.ValueKind == JsonValueKind.String &&
+                cwd.GetString() is { Length: > 0 } dir)
+                _project = Path.GetFileName(dir.TrimEnd('\\', '/'));
             if (root.TryGetProperty("isSidechain", out var sc) && sc.ValueKind == JsonValueKind.True) return;
             if (!root.TryGetProperty("message", out var msg) || !msg.TryGetProperty("usage", out var usage)) return;
 

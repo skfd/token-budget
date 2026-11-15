@@ -115,14 +115,6 @@
             ]
         },
         {
-            "type": "TextBlock",
-            "text": "${extraUsage}",
-            "size": "small",
-            "isSubtle": true,
-            "spacing": "none",
-            "$when": "${extraUsage != ''}"
-        },
-        {
             "type": "Container",
             "spacing": "default",
             "separator": true,
@@ -239,6 +231,128 @@
                             "verticalContentAlignment": "center"
                         }
                     ]
+                },
+                {
+                    "type": "Container",
+                    "$when": "${hasScoped}",
+                    "spacing": "small",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${scopedLabel} only",
+                            "size": "small",
+                            "weight": "lighter",
+                            "isSubtle": true,
+                            "spacing": "none"
+                        },
+                        {
+                            "type": "ColumnSet",
+                            "spacing": "small",
+                            "columns": [
+                                {
+                                    "type": "Column",
+                                    "width": "stretch",
+                                    "items": [
+                                        {
+                                            "type": "ColumnSet",
+                                            "$when": "${scopedBarStyle == 'accent'}",
+                                            "spacing": "none",
+                                            "columns": [
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedValueClamped}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "accent"
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedRemaining}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "emphasis"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "ColumnSet",
+                                            "$when": "${scopedBarStyle == 'warning'}",
+                                            "spacing": "none",
+                                            "columns": [
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedValueClamped}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "warning"
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedRemaining}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "emphasis"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "ColumnSet",
+                                            "$when": "${scopedBarStyle == 'attention'}",
+                                            "spacing": "none",
+                                            "columns": [
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedValueClamped}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "attention"
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "width": "${scopedRemaining}",
+                                                    "items": [],
+                                                    "minHeight": "4px",
+                                                    "style": "emphasis"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "verticalContentAlignment": "center"
+                                },
+                                {
+                                    "type": "Column",
+                                    "width": "auto",
+                                    "items": [
+                                        {
+                                            "type": "TextBlock",
+                                            "text": "${scopedPercent} used",
+                                            "size": "small",
+                                            "weight": "lighter",
+                                            "color": "${scopedStatusColor}"
+                                        }
+                                    ],
+                                    "verticalContentAlignment": "center"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "${breakdown}",
+                    "size": "small",
+                    "isSubtle": true,
+                    "wrap": true,
+                    "spacing": "small",
+                    "$when": "${breakdown != ''}"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "${creditsText}",
+                    "size": "small",
+                    "isSubtle": true,
+                    "spacing": "small",
+                    "$when": "${creditsText != ''}"
                 }
             ]
         },
@@ -249,10 +363,20 @@
             "items": [
                 {
                     "type": "TextBlock",
-                    "text": "Token breakdown",
+                    "text": "This session",
                     "weight": "bolder",
                     "size": "default",
                     "spacing": "small"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "${sessionLine}",
+                    "size": "small",
+                    "weight": "lighter",
+                    "isSubtle": true,
+                    "wrap": true,
+                    "maxLines": 2,
+                    "spacing": "none"
                 },
                 {
                     "type": "ColumnSet",
@@ -334,7 +458,8 @@
                                 }
                             ]
                         }
-                    ]
+                    ],
+                    "$when": "${hasLive}"
                 }
             ]
         }

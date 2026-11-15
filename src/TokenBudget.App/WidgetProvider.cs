@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Windows.Widgets;
@@ -252,20 +253,42 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
         }
         var (sevenDayBarStyle, sevenDayStatusColor) = GetStatusVisuals(sevenDay?.Utilization ?? 0, sevenDay != null);
 
-        // Extra usage info
-        var extraText = "";
-        if (extra is { IsEnabled: true })
+        // Usage credits (overage). Prefer the newer spend block, which carries the
+        // real currency; ExtraUsage is the legacy shape with minor units.
+        var credits = oauth?.Credits;
+        if (credits == null && extra != null)
+            credits = new CreditInfo(extra.IsEnabled, extra.UsedCredits / 100.0, extra.MonthlyLimit / 100.0, "USD", null);
+        var creditsText = "";
+        if (credits != null)
         {
-            extraText = $"Overage: ${extra.UsedCredits / 100.0:F0}/${extra.MonthlyLimit / 100.0:F0} ({extra.Utilization:F0}%)";
+            creditsText = credits.Enabled
+                ? $"Usage credits: {credits.Used:F2} of {credits.Limit:F2} {credits.Currency}"
+                : $"Usage credits off{(credits.DisabledReason is { } why ? $" ({why.Replace('_', ' ')})" : "")}";
         }
+        // The medium card has room for credits only when they are in play.
+        var extraText = credits is { } c && (c.Enabled || c.Used > 0) ? creditsText : "";
+
+        // Per-model weekly limit (e.g. "Fable only"). Show the busiest one.
+        var scoped = oauth?.ScopedLimits?.OrderByDescending(l => l.Utilization).FirstOrDefault();
+        var scopedValueClamped = scoped != null ? Math.Max(1, Math.Min(100, (int)Math.Round(scoped.Utilization))) : 0;
+        var (scopedBarStyle, scopedStatusColor) = GetStatusVisuals(scoped?.Utilization ?? 0, scoped != null);
+
+        // Where this week's usage went, e.g. "Claude Code 91% · Cowork 9%".
+        var breakdownText = oauth?.WeeklyBreakdown is { } rows
+            ? string.Join(" · ", rows.Where(r => r.Percent >= 1).Select(r => $"{r.Label} {r.Percent:F0}%"))
+            : "";
 
         var planName = "Claude Code";
 
-        // Extract live status data if available
+        // Current session, read from its transcript (any surface) or the CLI statusline.
         var live = usage.LiveStatus;
+        var hasLive = live != null;
         var costText = live?.CostUsd.HasValue == true ? $"${live.CostUsd.Value:F2}" : "";
         var modelText = !string.IsNullOrEmpty(live?.ModelName) ? live.ModelName : "Claude Code";
         var contextText = live?.ContextWindowUsedPercent.HasValue == true ? $"Ctx: {live.ContextWindowUsedPercent.Value:F1}%" : "";
+        var sessionLine = hasLive
+            ? string.Join(" · ", new[] { modelText, live!.SessionTitle, costText, contextText }.Where(x => !string.IsNullOrEmpty(x)))
+            : "No Claude Code session in the last 30 min";
 
         // Remaining bar width for progress bar background
         var percentRemaining = Math.Max(1, 100 - percentValueClamped);
@@ -293,15 +316,30 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "sevenDayValueClamped": {{sevenDayValueClamped}},
             "sevenDayRemaining": {{sevenDayRemaining}},
             "sevenDayReset": "{{sevenDayReset}}",
-            "extraUsage": "{{extraText}}",
+            "extraUsage": "{{J(extraText)}}",
+            "creditsText": "{{J(creditsText)}}",
+            "hasScoped": {{(scoped != null ? "true" : "false")}},
+            "scopedLabel": "{{J(scoped?.Label ?? "")}}",
+            "scopedPercent": "{{(scoped != null ? $"{scoped.Utilization:F0}%" : "")}}",
+            "scopedValueClamped": {{scopedValueClamped}},
+            "scopedRemaining": {{Math.Max(1, 100 - scopedValueClamped)}},
+            "scopedBarStyle": "{{scopedBarStyle}}",
+            "scopedStatusColor": "{{scopedStatusColor}}",
+            "breakdown": "{{J(breakdownText)}}",
+            "hasLive": {{(hasLive ? "true" : "false")}},
+            "sessionLine": "{{J(sessionLine)}}",
             "planName": "{{planName}}",
             "cost": "{{costText}}",
-            "model": "{{modelText}}",
+            "model": "{{J(modelText)}}",
             "context": "{{contextText}}",
             "size": "{{size}}"
         }
         """;
     }
+
+    /// <summary>Escapes text for embedding inside a JSON string literal.</summary>
+    private static string J(string? text) =>
+        string.IsNullOrEmpty(text) ? "" : System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(text);
 
     private string BuildQwenDataJson(UsageSnapshot usage, WidgetSize size)
     {
