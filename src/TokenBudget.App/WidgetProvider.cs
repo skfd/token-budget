@@ -326,7 +326,7 @@ public sealed class WidgetProvider : IWidgetProvider, IWidgetProvider2
             "scopedBarStyle": "{{scopedBarStyle}}",
             "scopedStatusColor": "{{scopedStatusColor}}",
             "breakdown": "{{J(breakdownText)}}",
-            "hasLive": {{(hasLive ? "true" : "false")}},
+            "liveFlag": "{{(hasLive ? "yes" : "")}}",
             "sessionLine": "{{J(sessionLine)}}",
             "planName": "{{planName}}",
             "cost": "{{costText}}",

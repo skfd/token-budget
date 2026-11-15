@@ -14,32 +14,39 @@ namespace TokenBudget.Providers.ClaudeCode;
 /// <see cref="ActiveWindow"/>. With several sessions running at once the widget
 /// follows whichever answered last; the session title says which one it is.
 ///
-/// Parsing is incremental: only bytes appended since the last read are parsed.
+/// Parsing is incremental and kept per transcript, so switching between parallel
+/// sessions never re-reads a file from the start (some run past 100 MB).
 /// </summary>
 public sealed class TranscriptReader
 {
     public static readonly TimeSpan ActiveWindow = TimeSpan.FromMinutes(30);
 
     private readonly string _projectsDir;
-
-    private string? _path;
-    private long _offset;
-    private readonly Dictionary<string, Usage> _byMessageId = new();
-    private Usage? _last;
-    private string? _model;
-    private string? _title;
-    private string? _sessionId;
-    private string? _project;
+    private readonly Dictionary<string, Session> _sessions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _gate = new();
 
     private record struct Usage(long Input, long Output, long CacheWrite, long CacheRead);
+
+    private sealed class Session
+    {
+        public required string Path;
+        public long Offset;
+        public readonly Dictionary<string, Usage> ByMessageId = new();
+        public Usage? Last;
+        public string? Model;
+        public string? Title;
+        public string? Project;
+        public DateTime LastSeenUtc;
+    }
+
+    private static readonly byte[] AssistantMarker = Encoding.UTF8.GetBytes("\"type\":\"assistant\"");
+    private static readonly byte[] TitleMarker = Encoding.UTF8.GetBytes("\"type\":\"custom-title\"");
 
     public TranscriptReader(string? projectsDir = null)
     {
         _projectsDir = projectsDir ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
     }
-
-    private readonly object _gate = new();
 
     public StatuslineData? Read()
     {
@@ -54,40 +61,49 @@ public sealed class TranscriptReader
             if (newest == null || DateTime.UtcNow - newest.LastWriteTimeUtc > ActiveWindow)
                 return null;
 
-            if (!string.Equals(newest.FullName, _path, StringComparison.OrdinalIgnoreCase) || newest.Length < _offset)
-                Reset(newest.FullName);
+            if (!_sessions.TryGetValue(newest.FullName, out var s) || newest.Length < s.Offset)
+                _sessions[newest.FullName] = s = new Session { Path = newest.FullName };
+            s.LastSeenUtc = DateTime.UtcNow;
+            Evict();
 
-            ReadAppended();
+            ReadAppended(s);
 
-            if (_last == null) return null;
+            if (s.Last == null) return null;
 
             long input = 0, output = 0;
-            foreach (var u in _byMessageId.Values)
+            foreach (var u in s.ByMessageId.Values)
             {
                 input += u.Input;
                 output += u.Output;
             }
 
             return new StatuslineData(
-                ModelName: _model != null ? FriendlyModelName(_model) : null,
+                ModelName: s.Model != null ? FriendlyModelName(s.Model) : null,
                 CostUsd: null,
                 ContextWindowUsedPercent: null,
                 TotalInputTokens: input,
                 TotalOutputTokens: output,
                 // Cache figures describe the latest request, not a running sum:
                 // every turn re-reads the whole cached prompt, so summing is meaningless.
-                CacheCreationTokens: _last.Value.CacheWrite,
-                CacheReadTokens: _last.Value.CacheRead,
+                CacheCreationTokens: s.Last.Value.CacheWrite,
+                CacheReadTokens: s.Last.Value.CacheRead,
                 CapturedAt: new DateTimeOffset(newest.LastWriteTimeUtc, TimeSpan.Zero),
                 // Untitled sessions (SDK, fresh CLI) fall back to the project folder.
-                SessionTitle: _title ?? _project,
-                SessionId: _sessionId);
+                SessionTitle: s.Title ?? s.Project,
+                SessionId: Path.GetFileNameWithoutExtension(s.Path));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"TranscriptReader: {ex.Message}");
             return null;
         }
+    }
+
+    private void Evict()
+    {
+        var cutoff = DateTime.UtcNow - ActiveWindow;
+        foreach (var key in _sessions.Where(kv => kv.Value.LastSeenUtc < cutoff).Select(kv => kv.Key).ToList())
+            _sessions.Remove(key);
     }
 
     private FileInfo? FindNewestTranscript()
@@ -106,68 +122,64 @@ public sealed class TranscriptReader
         return newest;
     }
 
-    private void Reset(string path)
+    /// <summary>
+    /// Streams the bytes appended since the last read in fixed chunks, parsing only
+    /// complete lines that look relevant. A half-written trailing line waits for next time.
+    /// </summary>
+    private static void ReadAppended(Session s)
     {
-        _path = path;
-        _offset = 0;
-        _byMessageId.Clear();
-        _last = null;
-        _model = null;
-        _title = null;
-        _project = null;
-        _sessionId = Path.GetFileNameWithoutExtension(path);
-    }
+        using var fs = new FileStream(s.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+            bufferSize: 1, FileOptions.SequentialScan);
+        if (fs.Length <= s.Offset) return;
+        fs.Seek(s.Offset, SeekOrigin.Begin);
 
-    private void ReadAppended()
-    {
-        using var fs = new FileStream(_path!, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        if (fs.Length <= _offset) return;
-        fs.Seek(_offset, SeekOrigin.Begin);
-
-        var buffer = new byte[fs.Length - _offset];
-        var read = 0;
-        while (read < buffer.Length)
+        var buffer = new byte[1 << 20];
+        var filled = 0;
+        while (true)
         {
-            var n = fs.Read(buffer, read, buffer.Length - read);
+            if (filled == buffer.Length)
+                Array.Resize(ref buffer, buffer.Length * 2); // a single line longer than the buffer
+            var n = fs.Read(buffer, filled, buffer.Length - filled);
             if (n == 0) break;
-            read += n;
+            filled += n;
+
+            var start = 0;
+            int nl;
+            while ((nl = Array.IndexOf(buffer, (byte)'\n', start, filled - start)) >= 0)
+            {
+                ParseLine(s, buffer.AsMemory(start, nl - start));
+                start = nl + 1;
+            }
+            s.Offset += start;
+            Buffer.BlockCopy(buffer, start, buffer, 0, filled - start);
+            filled -= start;
         }
-
-        // Only consume complete lines; a half-written trailing line waits for next time.
-        var lastNewline = Array.LastIndexOf(buffer, (byte)'\n', read - 1);
-        if (lastNewline < 0) return;
-        _offset += lastNewline + 1;
-
-        var text = Encoding.UTF8.GetString(buffer, 0, lastNewline);
-        foreach (var line in text.Split('\n'))
-            ParseLine(line);
     }
 
-    private void ParseLine(string line)
+    private static void ParseLine(Session s, ReadOnlyMemory<byte> line)
     {
         if (line.Length < 2) return;
-        // Cheap pre-filter: most lines are user turns, attachments and request blobs.
-        var isAssistant = line.Contains("\"type\":\"assistant\"");
-        var isTitle = line.Contains("\"type\":\"custom-title\"");
-        if (!isAssistant && !isTitle) return;
+        // Cheap pre-filter on raw bytes: most lines are user turns, attachments and request blobs.
+        var span = line.Span;
+        if (span.IndexOf(AssistantMarker) < 0 && span.IndexOf(TitleMarker) < 0) return;
 
         try
         {
             using var doc = JsonDocument.Parse(line);
             var root = doc.RootElement;
-            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            var type = root.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
 
             if (type == "custom-title")
             {
                 if (root.TryGetProperty("customTitle", out var ct) && ct.ValueKind == JsonValueKind.String)
-                    _title = ct.GetString();
+                    s.Title = ct.GetString();
                 return;
             }
 
             if (type != "assistant") return;
             if (root.TryGetProperty("cwd", out var cwd) && cwd.ValueKind == JsonValueKind.String &&
                 cwd.GetString() is { Length: > 0 } dir)
-                _project = Path.GetFileName(dir.TrimEnd('\\', '/'));
+                s.Project = Path.GetFileName(dir.TrimEnd('\\', '/'));
             if (root.TryGetProperty("isSidechain", out var sc) && sc.ValueKind == JsonValueKind.True) return;
             if (!root.TryGetProperty("message", out var msg) || !msg.TryGetProperty("usage", out var usage)) return;
 
@@ -181,13 +193,13 @@ public sealed class TranscriptReader
             // each repeating the same usage. Keep the last one per message id.
             var id = msg.TryGetProperty("id", out var mid) && mid.ValueKind == JsonValueKind.String
                 ? mid.GetString()!
-                : $"line{_byMessageId.Count}";
-            _byMessageId[id] = u;
-            _last = u;
+                : $"line{s.ByMessageId.Count}";
+            s.ByMessageId[id] = u;
+            s.Last = u;
 
             if (msg.TryGetProperty("model", out var m) && m.ValueKind == JsonValueKind.String &&
                 m.GetString() is { Length: > 0 } model && model != "<synthetic>")
-                _model = model;
+                s.Model = model;
         }
         catch (JsonException)
         {

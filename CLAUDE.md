@@ -110,7 +110,7 @@ public interface ILlmProvider
 ```
 
 Current implementations:
-- **ClaudeCodeLocalProvider**: Reads `~/.claude/widget-data.json` for live session data + OAuth API for rate limits
+- **ClaudeCodeLocalProvider**: Current session from the newest main-session transcript (`~/.claude/projects/*/*.jsonl`, any surface incl. desktop app; subagents not counted). Rate limits from the OAuth usage API (`limits[]`, `spend`, `seven_day_breakdown`) merged per window with `~/.claude/widget-data.json` (CLI statusline only) — fresher source wins. Cost/context % only from widget-data.json when its `session_id` matches. Sample response: `samples/anthropic-oauth-usage.json` (synthetic values)
 - **ZaiLocalProvider**: Parses `~/.local/share/opencode/storage/message/` JSON files for token usage + Z.ai quota API for rate limits
 - **CopilotProvider**: API-only provider fetching premium request usage from GitHub billing API (300/month Pro quota)
 - **QwenLocalProvider**: Parses `~/.qwen/projects/*/chats/*.jsonl` for token usage + client-side request counting for quota estimation
@@ -383,7 +383,8 @@ Polling only runs when widgets are active (Widgets board open).
 
 - `src/TokenBudget.App/WidgetProvider.cs` — COM widget lifecycle (IWidgetProvider)
 - `src/TokenBudget.App/Program.cs` — COM server entry point with CLSID registration
-- `src/TokenBudget.Providers/ClaudeCode/StatuslineReader.cs` — Reads live session data from widget-data.json
+- `src/TokenBudget.Providers/ClaudeCode/TranscriptReader.cs` — Reads the current session from its JSONL transcript (incremental, per file)
+- `src/TokenBudget.Providers/ClaudeCode/StatuslineReader.cs` — Reads CLI statusline data from widget-data.json
 - `src/TokenBudget.Providers/ClaudeCode/OAuthUsageClient.cs` — Fetches rate-limit data from Anthropic API
 - `src/TokenBudget.Providers/Zai/MessageParser.cs` — Parses opencode storage JSON files
 - `src/TokenBudget.Providers/Zai/ZaiLocalProvider.cs` — Z.ai provider implementation
