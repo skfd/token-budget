@@ -138,7 +138,9 @@ public sealed class StatuslineReader
                 SevenDayOpus: null,
                 SevenDaySonnet: null,
                 ExtraUsage: null,
-                FetchedAt: DateTimeOffset.UtcNow);
+                // Stamp with the file's write time, not now: the caller compares
+                // freshness against the OAuth API, and a stale file must lose.
+                FetchedAt: new DateTimeOffset(File.GetLastWriteTimeUtc(_statusFilePath), TimeSpan.Zero));
         }
         catch (Exception ex)
         {
