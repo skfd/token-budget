@@ -5,12 +5,6 @@
     "body": [
         {
             "type": "TextBlock",
-            "text": "Copilot Monthly Quota",
-            "weight": "bolder",
-            "size": "medium"
-        },
-        {
-            "type": "TextBlock",
             "text": "${usageText}",
             "size": "default",
             "spacing": "small"

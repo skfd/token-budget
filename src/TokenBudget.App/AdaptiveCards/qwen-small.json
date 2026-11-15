@@ -4,12 +4,6 @@
     "version": "1.5",
     "body": [
         {
-            "type": "TextBlock",
-            "text": "Plan usage limits",
-            "weight": "bolder",
-            "size": "default"
-        },
-        {
             "type": "ColumnSet",
             "spacing": "small",
             "columns": [
