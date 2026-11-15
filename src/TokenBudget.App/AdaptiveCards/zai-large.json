@@ -5,17 +5,39 @@
     "body": [
         {
             "type": "TextBlock",
-            "text": "5 Hours Quota",
+            "text": "Plan usage limits",
             "weight": "bolder",
             "size": "medium"
         },
         {
-            "type": "TextBlock",
-            "text": "${resetTime}",
-            "size": "small",
-            "weight": "lighter",
-            "isSubtle": true,
-            "spacing": "none"
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "5-hour quota",
+                            "weight": "bolder"
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "verticalContentAlignment": "bottom",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${resetTime}",
+                            "size": "small",
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
         },
         {
             "type": "ColumnSet",
@@ -109,23 +131,37 @@
         },
         {
             "type": "Container",
-            "spacing": "default",
-            "separator": true,
+            "spacing": "medium",
             "items": [
                 {
-                    "type": "TextBlock",
-                    "text": "Weekly Quota",
-                    "weight": "bolder",
-                    "size": "default",
-                    "spacing": "small"
-                },
-                {
-                    "type": "TextBlock",
-                    "text": "${weeklyReset}",
-                    "size": "small",
-                    "weight": "lighter",
-                    "isSubtle": true,
-                    "spacing": "none"
+                    "type": "ColumnSet",
+                    "spacing": "none",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Weekly quota",
+                                    "weight": "bolder"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "verticalContentAlignment": "bottom",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${weeklyReset}",
+                                    "size": "small",
+                                    "isSubtle": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
                     "type": "ColumnSet",
@@ -221,19 +257,18 @@
         },
         {
             "type": "Container",
-            "spacing": "default",
-            "separator": true,
+            "spacing": "large",
             "items": [
                 {
                     "type": "TextBlock",
                     "text": "Token breakdown",
                     "weight": "bolder",
                     "size": "default",
-                    "spacing": "small"
+                    "spacing": "none"
                 },
                 {
                     "type": "TextBlock",
-                    "text": "${sessionCount} sessions \u2022 ${messageCount} messages",
+                    "text": "${sessionCount} sessions • ${messageCount} messages",
                     "size": "small",
                     "weight": "lighter",
                     "isSubtle": true,

@@ -10,19 +10,34 @@
             "size": "medium"
         },
         {
-            "type": "TextBlock",
-            "text": "Current session",
-            "weight": "bolder",
-            "size": "default",
-            "spacing": "small"
-        },
-        {
-            "type": "TextBlock",
-            "text": "${resetTime}",
-            "size": "small",
-            "weight": "lighter",
-            "isSubtle": true,
-            "spacing": "none"
+            "type": "ColumnSet",
+            "spacing": "small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "Current session",
+                            "weight": "bolder"
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "verticalContentAlignment": "bottom",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${resetTime}",
+                            "size": "small",
+                            "isSubtle": true
+                        }
+                    ]
+                }
+            ]
         },
         {
             "type": "ColumnSet",
@@ -116,23 +131,37 @@
         },
         {
             "type": "Container",
-            "spacing": "default",
-            "separator": true,
+            "spacing": "medium",
             "items": [
                 {
-                    "type": "TextBlock",
-                    "text": "Weekly limits",
-                    "weight": "bolder",
-                    "size": "default",
-                    "spacing": "small"
-                },
-                {
-                    "type": "TextBlock",
-                    "text": "${sevenDayReset}",
-                    "size": "small",
-                    "weight": "lighter",
-                    "isSubtle": true,
-                    "spacing": "none"
+                    "type": "ColumnSet",
+                    "spacing": "none",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Weekly",
+                                    "weight": "bolder"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "verticalContentAlignment": "bottom",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${sevenDayReset}",
+                                    "size": "small",
+                                    "isSubtle": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
                     "type": "ColumnSet",
@@ -228,23 +257,37 @@
         },
         {
             "type": "Container",
-            "spacing": "default",
-            "separator": true,
+            "spacing": "medium",
             "items": [
                 {
-                    "type": "TextBlock",
-                    "text": "Monthly limits",
-                    "weight": "bolder",
-                    "size": "default",
-                    "spacing": "small"
-                },
-                {
-                    "type": "TextBlock",
-                    "text": "${monthlyReset}",
-                    "size": "small",
-                    "weight": "lighter",
-                    "isSubtle": true,
-                    "spacing": "none"
+                    "type": "ColumnSet",
+                    "spacing": "none",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Monthly",
+                                    "weight": "bolder"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "verticalContentAlignment": "bottom",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${monthlyReset}",
+                                    "size": "small",
+                                    "isSubtle": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
                     "type": "ColumnSet",
@@ -340,15 +383,14 @@
         },
         {
             "type": "Container",
-            "spacing": "default",
-            "separator": true,
+            "spacing": "large",
             "items": [
                 {
                     "type": "TextBlock",
                     "text": "Token breakdown",
                     "weight": "bolder",
                     "size": "default",
-                    "spacing": "small"
+                    "spacing": "none"
                 },
                 {
                     "type": "ColumnSet",
